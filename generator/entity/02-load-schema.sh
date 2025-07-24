@@ -2,13 +2,10 @@
 # shellcheck disable=SC2034,SC2154
 
 SCHEMA_DIR="./hexagonizer/entity/entity-schemas"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 if [[ "$USE_JSON" == true ]]; then
-  command -v jq >/dev/null 2>&1 || {
-    echo >&2 "❌ Error: jq no está instalado."
-    exit 1
-  }
-
   echo "📁 Ingrese ruta al archivo JSON de esquema de entidad"
   echo "   (o presione Enter para listar archivos disponibles en $SCHEMA_DIR):"
   read -r input_path
@@ -38,45 +35,74 @@ if [[ "$USE_JSON" == true ]]; then
       exit 1
     fi
 
-    SCHEMA_JSON="${json_files[selected_num - 1]}"
+    SCHEMA_FILE="${json_files[selected_num - 1]}"
   else
     if [[ ! -f "$input_path" ]]; then
       echo "❌ No se encontró el archivo JSON: $input_path"
       exit 1
     fi
-    SCHEMA_JSON="$input_path"
+    SCHEMA_FILE="$input_path"
   fi
 
-  entity=$(jq -r '.name' "$SCHEMA_JSON")
-  if [[ "$entity" == "null" ]] || [[ -z "$entity" ]]; then
-    echo "❌ No se pudo leer el nombre de la entidad del JSON."
-    exit 1
-  fi
+  # Leer contenido para parsear en memoria
+  schema_content=$(cat "$SCHEMA_FILE")
+  ENTITY_NAME=$(basename "$SCHEMA_FILE" .json | tr '[:upper:]' '[:lower:]')
 
-  # ✅ Extraer campos personalizados del JSON
-  custom_fields=$(jq '.fields // []' "$SCHEMA_JSON")
-
-  # ✅ Extraer métodos personalizados (opcional)
-  custom_methods=$(jq '.methods // []' "$SCHEMA_JSON")
+  # SCHEMA_CONTENT queda vacío porque usamos archivo
+  SCHEMA_CONTENT=""
 
 else
   read -r -p "📝 Nombre de la entidad (ej. user, product): " entity
-  custom_fields='[]'
-  custom_methods='[]'
+  ENTITY_NAME="${entity,,}"
+
+  schema_content=$(
+    cat <<EOF
+{
+  "name": "$ENTITY_NAME",
+  "fields": [
+    { "name": "id", "required": true },
+    { "name": "active", "default": true },
+    { "name": "createdAt", "default": "new Date()" },
+    { "name": "updatedAt", "default": "new Date()" },
+    { "name": "deletedAt", "default": null },
+    { "name": "ownedBy", "default": null }
+  ],
+  "methods": []
+}
+EOF
+  )
+
+  SCHEMA_FILE=""
+  SCHEMA_CONTENT="$schema_content"
 fi
 
-# ---------------------
-# ✅ VALIDACIÓN DEL NOMBRE
-# ---------------------
+# Exportar variables para otros scripts
+export entity="$ENTITY_NAME"
+export SCHEMA_FILE
+export SCHEMA_CONTENT
+export schema_content
 
-entity=$(echo "$entity" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-entity=$(echo "$entity" | tr -d '[:space:]')
-entity=$(echo "$entity" | tr -cd '[:alnum:]')
-entity="${entity,,}"
+# Validar nombre entidad
+entity_clean=$(echo "$ENTITY_NAME" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -cd '[:alnum:]')
+EntityPascal="$(tr '[:lower:]' '[:upper:]' <<<"${entity_clean:0:1}")${entity_clean:1}"
 
-if [[ -z "$entity" ]]; then
+if [[ -z "$entity_clean" ]]; then
   echo "❌ Error: El nombre de la entidad no puede estar vacío o inválido."
   exit 1
 fi
 
-EntityPascal="$(tr '[:lower:]' '[:upper:]' <<<"${entity:0:1}")${entity:1}"
+export entity="$entity_clean"
+export EntityPascal
+
+if [[ -n "$SCHEMA_FILE" ]]; then
+  FIELDS=$(node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js" "$SCHEMA_FILE")
+elif [[ -n "$SCHEMA_CONTENT" ]]; then
+  FIELDS=$(echo "$SCHEMA_CONTENT" | node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js")
+else
+  echo "❌ No se puede generar campos: sin esquema"
+  exit 1
+fi
+
+export FIELDS
+
+echo "✅ LoadSchema"

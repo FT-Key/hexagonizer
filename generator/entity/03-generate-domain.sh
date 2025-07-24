@@ -1,131 +1,109 @@
 #!/bin/bash
+# generator/entity/03-generate-domain.sh
 # shellcheck disable=SC2154
-# 1. DOMAIN
+set -e
+
 ENTITY_PASCAL="$(tr '[:lower:]' '[:upper:]' <<<"${entity:0:1}")${entity:1}"
 DOMAIN_PATH="src/domain/$entity"
-mkdir -p "$DOMAIN_PATH"
 domain_file="$DOMAIN_PATH/${entity}.js"
+mkdir -p "$DOMAIN_PATH"
 
-# Campos genéricos reservados que no deben salir de los fields JSON
-GENERIC_FIELDS=("id" "active" "createdAt" "updatedAt" "deletedAt" "ownedBy")
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# Función para saber si un valor está en un array (case sensitive)
-contains() {
-  local e match="$1"
-  shift
-  for e; do [[ "$e" == "$match" ]] && return 0; done
-  return 1
-}
-
-# Método más robusto para construir los arrays
-declare -a names
-declare -a defaults
-declare -a requireds
-
-# Obtener la cantidad de campos
-field_count=$(echo "$fields" | jq '. | length')
-
-# Llenar arrays campo por campo, ignorando campos genéricos
-for ((i = 0; i < field_count; i++)); do
-  name=$(echo "$fields" | jq -r ".[$i].name")
-  # Ignorar campos genéricos
-  if contains "$name" "${GENERIC_FIELDS[@]}"; then
-    continue
-  fi
-  names+=("$name")
-  defaults+=("$(echo "$fields" | jq -r ".[$i].default // empty")")
-  requireds+=("$(echo "$fields" | jq -r ".[$i].required // false")")
-done
-
-# Procesar métodos si existen - CORREGIDO
-declare -a method_lines
-if echo "$schema_content" | jq -e '.methods' >/dev/null 2>&1; then
-  method_count=$(echo "$schema_content" | jq '.methods | length')
-
-  for ((i = 0; i < method_count; i++)); do
-    method_name=$(echo "$schema_content" | jq -r ".methods[$i].name")
-    method_params=$(echo "$schema_content" | jq -r ".methods[$i].params | join(\", \")")
-    method_body=$(echo "$schema_content" | jq -r ".methods[$i].body")
-
-    # Construir el método
-    method_lines+=("") # línea vacía antes del método
-    method_lines+=("  $method_name($method_params) {")
-    method_lines+=("    $method_body")
-    method_lines+=("  }")
-  done
+if [[ -n "$SCHEMA_FILE" ]]; then
+  # Usar archivo físico para parsear
+  parsed_json=$(node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js" "$SCHEMA_FILE")
+elif [[ -n "$SCHEMA_CONTENT" ]]; then
+  # Usar JSON en memoria
+  parsed_json=$(echo "$SCHEMA_CONTENT" | node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js")
+else
+  echo "❌ No hay esquema definido para parsear en domain"
+  exit 1
 fi
 
+# === Convertir JSON a variables Bash con node ===
+# Usamos node para imprimir arrays exportables desde Bash
+eval "$(echo "$parsed_json" | node -e "
+  const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+  const fields = input.fields;
+  const methods = input.methods;
+
+  const printArray = (name, arr) => {
+    arr.forEach((v, i) => {
+      // Escapar comillas simples para bash
+      const safe = v === undefined ? '' : v.toString().replace(/'/g, \"'\\\\''\");
+      console.log(\`\${name}[\${i}]='\${safe}'\`);
+    });
+  };
+
+  printArray('names', fields.map(f => f.name));
+  printArray('defaults', fields.map(f => f.default ?? ''));
+  printArray('requireds', fields.map(f => f.required ? 'true' : 'false'));
+
+  printArray('method_names', methods.map(m => m.name));
+  printArray('method_params', methods.map(m => JSON.stringify(m.params)));
+  printArray('method_bodies', methods.map(m => m.body));
+")"
+
+# === Preparar generación de clase ===
+
 constructor_params=""
-declare -a constructor_body_lines
-declare -a getter_lines
-declare -a setter_lines
-declare -a tojson_lines
-
-# Primero, agregar campos genéricos con lógica fija
-
-constructor_params+="id, active = true, createdAt = new Date(), updatedAt = new Date(), deletedAt = null, ownedBy = null"
-
-constructor_body_lines+=("    if (id === undefined) throw new Error('id is required');")
-constructor_body_lines+=("    this._id = id;")
-constructor_body_lines+=("    this._active = active;")
-constructor_body_lines+=("    this._createdAt = createdAt;")
-constructor_body_lines+=("    this._updatedAt = updatedAt;")
-constructor_body_lines+=("    this._deletedAt = deletedAt;")
-constructor_body_lines+=("    this._ownedBy = ownedBy;")
-
-getter_lines+=("  get id() { return this._id; }")
-setter_lines+=("  set id(value) { this._id = value; this._touchUpdatedAt(); }")
-
-getter_lines+=("  get active() { return this._active; }")
-setter_lines+=("  set active(value) { this._active = value; this._touchUpdatedAt(); }")
-
-getter_lines+=("  get createdAt() { return this._createdAt; }")
-setter_lines+=("  set createdAt(value) { this._createdAt = value; this._touchUpdatedAt(); }")
-
-getter_lines+=("  get updatedAt() { return this._updatedAt; }")
-setter_lines+=("  set updatedAt(value) { this._updatedAt = value; this._touchUpdatedAt(); }")
-
-getter_lines+=("  get deletedAt() { return this._deletedAt; }")
-setter_lines+=("  set deletedAt(value) { this._deletedAt = value; this._touchUpdatedAt(); }")
-
-getter_lines+=("  get ownedBy() { return this._ownedBy; }")
-setter_lines+=("  set ownedBy(value) { this._ownedBy = value; this._touchUpdatedAt(); }")
-
-tojson_lines+=("      id: this._id,")
-tojson_lines+=("      active: this._active,")
-tojson_lines+=("      createdAt: this._createdAt,")
-tojson_lines+=("      updatedAt: this._updatedAt,")
-tojson_lines+=("      deletedAt: this._deletedAt,")
-tojson_lines+=("      ownedBy: this._ownedBy,")
-
-# Ahora agregamos los campos custom (no genéricos)
+declare -a constructor_body_lines=()
+declare -a getter_lines=()
+declare -a setter_lines=()
+declare -a tojson_lines=()
 
 for i in "${!names[@]}"; do
   name="${names[i]}"
   default="${defaults[i]}"
   required="${requireds[i]}"
 
-  constructor_params+=", $name"
+  # Construir lista de parámetros del constructor
+  if [[ -z "$constructor_params" ]]; then
+    constructor_params="$name"
+  else
+    constructor_params+=", $name"
+  fi
 
-  if [[ "$required" == "true" && (-z "$default" || "$default" == "empty") ]]; then
+  # Validar si es requerido y sin default
+  if [[ "$required" == "true" && -z "$default" ]]; then
     constructor_body_lines+=("    if ($name === undefined) throw new Error('$name is required');")
     constructor_body_lines+=("    this._$name = $name;")
-  elif [[ -n "$default" && "$default" != "empty" ]]; then
+  elif [[ -n "$default" ]]; then
     constructor_body_lines+=("    this._$name = $name !== undefined ? $name : $default;")
   else
     constructor_body_lines+=("    this._$name = $name;")
   fi
 
+  # Getters y setters
   getter_lines+=("  get $name() { return this._$name; }")
   setter_lines+=("  set $name(value) { this._$name = value; this._touchUpdatedAt(); }")
+
+  # toJSON properties
   tojson_lines+=("      $name: this._$name,")
 done
 
-# Limpiar última coma del toJSON
+# Quitar la coma final del último campo en toJSON
 if [[ ${#tojson_lines[@]} -gt 0 ]]; then
   tojson_lines[-1]="${tojson_lines[-1]%,}"
 fi
 
+# Agregar métodos
+declare -a method_lines=()
+if [[ ${#method_names[@]} -eq 0 ]]; then
+  method_lines+=(" ")
+else
+  for i in "${!method_names[@]}"; do
+    # Params vienen como JSON array, quitar comillas para imprimir limpio
+    params=$(echo "${method_params[i]}" | jq -r '. | join(", ")')
+    method_lines+=("")
+    method_lines+=("  ${method_names[i]}($params) {")
+    method_lines+=("    ${method_bodies[i]}")
+    method_lines+=("  }")
+  done
+fi
+
+# Confirmación de escritura
 if [[ -f "$domain_file" && "$AUTO_CONFIRM" != true ]]; then
   read -r -p "⚠️  El archivo $domain_file ya existe. ¿Desea sobrescribirlo? [y/n]: " confirm
   if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
@@ -134,7 +112,7 @@ if [[ -f "$domain_file" && "$AUTO_CONFIRM" != true ]]; then
   fi
 fi
 
-# Escritura del archivo
+# === Escritura del archivo final ===
 {
   echo "export class $ENTITY_PASCAL {"
   echo "  /**"
@@ -161,12 +139,7 @@ fi
   echo "    this._updatedAt = new Date();"
   echo "  }"
   echo ""
-
-  # Agregar métodos personalizados si existen
-  if [[ ${#method_lines[@]} -gt 0 ]]; then
-    printf "%s\n" "${method_lines[@]}"
-  fi
-
+  printf "%s\n" "${method_lines[@]}"
   echo ""
   echo "  toJSON() {"
   echo "    return {"

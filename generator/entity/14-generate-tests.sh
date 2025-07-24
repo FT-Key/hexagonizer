@@ -1,27 +1,62 @@
 #!/bin/bash
+# generator/entity/14-generate-tests.sh
 # shellcheck disable=SC2154,SC2086
+set -e
 
 TEST_PATH="tests/application/$entity"
 mkdir -p "$TEST_PATH"
 
-# Función para generar datos dummy para los campos del schema
-generate_dummy_value() {
-  local field_name=$1
-  echo "\"${field_name}_test\""
-}
+# Validar que FIELDS venga desde load-schema
+if [[ -z "$FIELDS" ]]; then
+  echo "❌ No se encontraron campos en \$FIELDS para generate-tests"
+  exit 1
+fi
 
-fields_js=$(jq -c '.fields' <<<"$schema_content")
+# Extraer campos con Node
+# Extraer campos con Node
+FIELDS_JS=$(node -e "
+  try {
+    const { fields } = JSON.parse(process.env.FIELDS);
+    if (!Array.isArray(fields) || fields.length === 0) {
+      throw new Error('No se encontraron campos en el esquema');
+    }
+    fields.forEach((f, i) => {
+      const dummy = String(f.dummy || '').replace(/\"/g, '');
+      const updated = String(f.updated || '').replace(/\"/g, '');
+      console.log('test_names[' + i + ']=\"' + f.name + '\"');
+      console.log('test_dummy[' + i + ']=\"' + dummy + '\"');
+      console.log('test_updated[' + i + ']=\"' + updated + '\"');
+    });
+  } catch (e) {
+    console.error('❌ Error al parsear FIELDS en generate-tests:', e.message);
+    process.exit(1);
+  }
+" FIELDS="$FIELDS")
 
-# Construir input con campos dummy para usar en tests
+eval "$FIELDS_JS"
+
+# Crear input base y asserts
 input_entries=""
-for row in $(echo "$fields_js" | jq -c '.[]'); do
-  name=$(jq -r '.name' <<<"$row")
-  dummy_value=$(generate_dummy_value "$name")
-  input_entries+="    $name: $dummy_value,\n"
-done
-input_entries=$(echo -e "$input_entries" | sed '$s/,\n$//')
+factory_asserts=""
+create_asserts=""
+update_entries=""
+update_asserts=""
 
-# Función para crear test si no existe o si se confirma sobreescritura
+for i in "${!test_names[@]}"; do
+  name="${test_names[$i]}"
+  dummy="${test_dummy[$i]}"
+  updated="${test_updated[$i]}"
+
+  input_entries+="    $name: $dummy,\n"
+  factory_asserts+="  assert.strictEqual(entity.$name, data.$name);\n"
+  create_asserts+="  assert.strictEqual(entity.$name, input.$name);\n"
+  update_entries+="    $name: $updated,\n"
+  update_asserts+="  assert.strictEqual(updated.$name, updateInput.$name);\n"
+done
+
+input_entries=$(echo -e "$input_entries" | sed '$s/,\n$//')
+update_entries=$(echo -e "$update_entries" | sed '$s/,\n$//')
+
 create_test_file() {
   local file_path="$1"
   shift
@@ -33,7 +68,7 @@ create_test_file() {
   echo "✅ Test generado: $file_path"
 }
 
-# CREATE test (incluye factory)
+# CREATE + FACTORY
 create_test_file "$TEST_PATH/create-$entity.test.js" "$(
   cat <<EOF
 import assert from 'assert';
@@ -58,10 +93,7 @@ $input_entries
   assert.strictEqual(entity.active, data.active);
   assert.strictEqual(entity.deletedAt, null);
   assert.strictEqual(entity.ownedBy, null);
-$(for row in $(echo "$fields_js" | jq -c '.[]'); do
-    name=$(jq -r '.name' <<<"$row")
-    echo "  assert.strictEqual(entity.$name, data.$name);"
-  done)
+$factory_asserts
   console.log('✅ $EntityPascal factory test passed');
 }
 
@@ -79,10 +111,7 @@ $input_entries
   assert.strictEqual(entity.active, true);
   assert.strictEqual(entity.deletedAt, null);
   assert.strictEqual(entity.ownedBy, null);
-$(for row in $(echo "$fields_js" | jq -c '.[]'); do
-    name=$(jq -r '.name' <<<"$row")
-    echo "  assert.strictEqual(entity.$name, input.$name);"
-  done)
+$create_asserts
   console.log('✅ create-$entity passed');
 }
 
@@ -98,7 +127,7 @@ testCreate${EntityPascal}().catch(err => {
 EOF
 )"
 
-# GET test
+# GET
 create_test_file "$TEST_PATH/get-$entity.test.js" "$(
   cat <<EOF
 import assert from 'assert';
@@ -129,16 +158,7 @@ testGet${EntityPascal}().catch(err => {
 EOF
 )"
 
-# UPDATE test
-update_input_entries=$(for row in $(echo "$fields_js" | jq -c '.[]'); do
-  name=$(jq -r '.name' <<<"$row")
-  echo "    $name: \"${name}_updated\","
-done)
-update_asserts=$(for row in $(echo "$fields_js" | jq -c '.[]'); do
-  name=$(jq -r '.name' <<<"$row")
-  echo "  assert.strictEqual(updated.$name, updateInput.$name);"
-done)
-
+# UPDATE
 create_test_file "$TEST_PATH/update-$entity.test.js" "$(
   cat <<EOF
 import assert from 'assert';
@@ -158,7 +178,7 @@ $input_entries
   const created = await create.execute(input);
 
   const updateInput = {
-$update_input_entries
+$update_entries
   };
 
   const updated = await update.execute(created.id, updateInput);
@@ -174,7 +194,7 @@ testUpdate${EntityPascal}().catch(err => {
 EOF
 )"
 
-# DELETE test
+# DELETE
 create_test_file "$TEST_PATH/delete-$entity.test.js" "$(
   cat <<EOF
 import assert from 'assert';
@@ -210,7 +230,7 @@ testDelete${EntityPascal}().catch(err => {
 EOF
 )"
 
-# DEACTIVATE test
+# DEACTIVATE
 create_test_file "$TEST_PATH/deactivate-$entity.test.js" "$(
   cat <<EOF
 import assert from 'assert';

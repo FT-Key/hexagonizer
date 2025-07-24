@@ -38,36 +38,25 @@ for env_file in ".env" ".env.production"; do
   fi
 done
 
-# Verificar y agregar scripts a package.json
+# Verificar y agregar scripts a package.json usando Node.js
+
 echo "🛠️ Verificando scripts y configuraciones en package.json..."
 
-# Usamos jq para editar de forma segura
-if ! command -v jq &>/dev/null; then
-  echo "❌ Error: 'jq' no está instalado. Instalalo con: sudo apt install jq o brew install jq"
-  exit 1
-fi
-
-tmp_file="package.tmp.json"
-
-# Asegurar que "scripts" exista
-jq 'if .scripts == null then .scripts = {} else . end' package.json >"$tmp_file" && mv "$tmp_file" package.json
-
-# Agregar script start si no existe
-if [ "$(jq '.scripts.start' package.json)" = "null" ]; then
-  jq '.scripts.start = "node src/index.js"' package.json >"$tmp_file" && mv "$tmp_file" package.json
-  echo "✅ Script start agregado"
-fi
-
-# Agregar script dev si no existe
-if [ "$(jq '.scripts.dev' package.json)" = "null" ]; then
-  jq '.scripts.dev = "nodemon src/index.js"' package.json >"$tmp_file" && mv "$tmp_file" package.json
-  echo "✅ Script dev agregado"
-fi
-
-# Verificar y agregar "type": "module" si no existe
-if [ "$(jq -r '.type // empty' package.json)" != "module" ]; then
-  jq '.type = "module"' package.json >"$tmp_file" && mv "$tmp_file" package.json
-  echo "✅ Campo 'type: module' agregado a package.json"
-fi
+node -e '
+const fs = require("fs");
+const path = "./package.json";
+try {
+  const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+  pkg.scripts = pkg.scripts || {};
+  if (!pkg.scripts.start) pkg.scripts.start = "node src/index.js";
+  if (!pkg.scripts.dev) pkg.scripts.dev = "nodemon src/index.js";
+  if (pkg.type !== "module") pkg.type = "module";
+  fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+  console.log("✅ package.json actualizado con scripts y type: module");
+} catch (err) {
+  console.error("❌ Error leyendo o escribiendo package.json:", err);
+  process.exit(1);
+}
+'
 
 echo "✅ Configuración de proyecto completada."

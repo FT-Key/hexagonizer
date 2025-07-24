@@ -9,20 +9,24 @@ show_menu() {
   echo "🚀 Hexagonizer"
   echo "==============================="
   echo "1. 🧱 Inicializar proyecto"
-  echo "2. 🧬 Generar nueva entidad"
-  echo "3. 🐳 Configurar Docker"
-  echo "4. ❌ Salir"
+  echo "2. 🧬 Generar nueva entidad (modo interactivo)"
+  echo "3. ⚡ Generar entidad (responder sí a todo)"
+  echo "4. 📄 Generar entidad desde JSON"
+  echo "5. 📄⚡ Generar entidad desde JSON (sí a todo)"
+  echo "6. ❌ Salir"
   echo "==============================="
 }
 
 read_option() {
   local choice
-  read -rp "👉 Selecciona una opción [1-4]: " choice
+  read -rp "👉 Selecciona una opción [1-6]: " choice
   case "$choice" in
   1) bash "$DIR/scripts/init-project.sh" ;;
   2) bash "$DIR/scripts/entity-generator.sh" ;;
-  3) bash "$DIR/generator/project/09-setup-docker.sh" ;;
-  4)
+  3) bash "$DIR/scripts/entity-generator.sh" -y ;;
+  4) bash "$DIR/scripts/entity-generator.sh" --json ;;
+  5) bash "$DIR/scripts/entity-generator.sh" --json -y ;;
+  6)
     echo "👋 Saliendo..."
     exit 0
     ;;

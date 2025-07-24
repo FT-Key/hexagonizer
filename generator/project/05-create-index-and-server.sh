@@ -92,7 +92,6 @@ import publicRoutes from './interfaces/http/public/public.routes.js';
 // import entityRoutes from './interfaces/http/entity/entity.routes.js';
 
 import { wrapRouterWithFlexibleMiddlewares } from './utils/wrap-router-with-flexible-middlewares.js';
-import { createQueryMiddlewares } from './interfaces/http/middlewares/query.middlewares.js';
 // import { entityQueryConfig } from './interfaces/http/entity/query-entity-config.js';
 
 const excludePathsByMiddleware = {
@@ -145,7 +144,7 @@ write_file_with_confirm "src/public/index.html" "$(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hexagon</title>
+  <title>Hexagonizer</title>
   <style>
     * {
       margin: 0;
@@ -446,7 +445,7 @@ write_file_with_confirm "src/public/index.html" "$(
 
 <body>
   <nav class="navbar">
-    <div class="logo">HEXAGON</div>
+    <div class="logo">HEXAGONIZER</div>
     <div class="nav-links">
       <a href="/health">Health</a>
       <a href="/public/info">Public</a>

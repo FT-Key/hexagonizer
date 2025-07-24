@@ -1,41 +1,54 @@
 #!/bin/bash
-# 13-generate-query-entity-config.sh
+# 12-generate-query-entity-config.sh
+set -e
 
-if [ -z "$fields" ] || [ -z "$entity" ]; then
-  echo "❌ Error: faltan campos o nombre de entidad."
+if [[ -z "$SCHEMA_CONTENT" || -z "$entity" ]]; then
+  echo "❌ Error: faltan SCHEMA_CONTENT o nombre de entidad."
   exit 1
 fi
 
-entity_lc="${entity,,}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Campos que deben ser excluidos explícitamente por nombre (aunque no sean sensibles)
-excluded_fields=("deletedAt" "ownedBy")
+query_config_json=$(echo "$SCHEMA_CONTENT" | node -e "
+  const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+  const fields = input.fields || [];
 
-# Filtrar campos: NO sensibles y que NO estén en la lista de excluidos
-valid_fields=$(echo "$fields" | jq -r --argjson excluded "$(printf '%s\n' "${excluded_fields[@]}" | jq -R . | jq -s .)" '
-  map(select(
-    ((.sensitive | not) or (.sensitive == false)) and
-    (.name as $n | $excluded | index($n) | not)
-  )) | map(.name) | .[]')
+  // Filtrar campos que NO sean sensibles y que tengan atributo true para cada tipo, por defecto true
+  const searchableFields = fields
+    .filter(f => !f.sensitive && (f.searchable !== false))
+    .map(f => f.name);
 
-# Eliminar duplicados y ordenar
-mapfile -t sorted_fields < <(echo "$valid_fields" | sort -u)
+  const sortableFields = fields
+    .filter(f => !f.sensitive && (f.sortable !== false))
+    .map(f => f.name);
 
-# Convertir a listas JS
-array_to_js_list() {
-  local arr=("$@")
-  local res=""
-  for e in "${arr[@]}"; do
-    res+="\"$e\", "
-  done
-  echo "${res%, }"
+  const filterableFields = fields
+    .filter(f => !f.sensitive && (f.filterable !== false))
+    .map(f => f.name);
+
+  console.log(JSON.stringify({ searchableFields, sortableFields, filterableFields }));
+") || {
+  echo "❌ Error al generar configuración de query"
+  exit 1
 }
 
-searchable_js=$(array_to_js_list "${sorted_fields[@]}")
-sortable_js=$(array_to_js_list "${sorted_fields[@]}")
-filterable_js=$(array_to_js_list "${sorted_fields[@]}")
+searchable_js=$(echo "$query_config_json" | node -e "
+  const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+  console.log(input.searchableFields.map(f => '\"' + f + '\"').join(', '));
+")
 
-# Generar archivo de salida
+sortable_js=$(echo "$query_config_json" | node -e "
+  const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+  console.log(input.sortableFields.map(f => '\"' + f + '\"').join(', '));
+")
+
+filterable_js=$(echo "$query_config_json" | node -e "
+  const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+  console.log(input.filterableFields.map(f => '\"' + f + '\"').join(', '));
+")
+
+entity_lc="${entity,,}"
 mkdir -p "src/interfaces/http/$entity_lc"
 output_file="src/interfaces/http/${entity_lc}/query-${entity_lc}-config.js"
 

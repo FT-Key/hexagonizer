@@ -13,5 +13,6 @@
     "node"
   ],
   "author": "Franco Toledo",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module"
 }

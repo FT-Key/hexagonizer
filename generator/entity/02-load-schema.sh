@@ -1,9 +1,13 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC2154
 
-SCHEMA_DIR="./hexagonizer/entity/entity-schemas"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Root del proyecto donde está instalado el CLI (hexagonizer)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Directorio desde donde se está ejecutando el comando (el proyecto del usuario)
+CLI_ROOT="$(pwd)"
+
+SCHEMA_DIR="$CLI_ROOT/entity-schemas"
 
 if [[ "$USE_JSON" == true ]]; then
   echo "📁 Ingrese ruta al archivo JSON de esquema de entidad"
@@ -12,13 +16,16 @@ if [[ "$USE_JSON" == true ]]; then
 
   if [[ -z "$input_path" ]]; then
     if [[ ! -d "$SCHEMA_DIR" ]]; then
-      echo "❌ Directorio no existe: $SCHEMA_DIR"
+      mkdir -p "$SCHEMA_DIR"
+      echo "📂 Se creó el directorio '$SCHEMA_DIR' para que coloques tus esquemas JSON de entidades."
+      echo "   Agrega tus archivos aquí y vuelve a ejecutar el comando."
       exit 1
     fi
 
     mapfile -t json_files < <(find "$SCHEMA_DIR" -maxdepth 1 -type f -name '*.json' | sort)
     if [[ ${#json_files[@]} -eq 0 ]]; then
       echo "❌ No se encontraron archivos JSON en $SCHEMA_DIR"
+      echo "   Agrega archivos .json a ese directorio y vuelve a intentar."
       exit 1
     fi
 
@@ -44,12 +51,8 @@ if [[ "$USE_JSON" == true ]]; then
     SCHEMA_FILE="$input_path"
   fi
 
-  # Leer contenido para parsear en memoria
   schema_content=$(cat "$SCHEMA_FILE")
   ENTITY_NAME=$(basename "$SCHEMA_FILE" .json | tr '[:upper:]' '[:lower:]')
-
-  # SCHEMA_CONTENT queda vacío porque usamos archivo
-  SCHEMA_CONTENT=""
 
 else
   read -r -p "📝 Nombre de la entidad (ej. user, product): " entity
@@ -73,13 +76,12 @@ EOF
   )
 
   SCHEMA_FILE=""
-  SCHEMA_CONTENT="$schema_content"
 fi
 
-# Exportar variables para otros scripts
+# Exportar
+export SCHEMA_CONTENT="$(cat "$SCHEMA_FILE")"
 export entity="$ENTITY_NAME"
 export SCHEMA_FILE
-export SCHEMA_CONTENT
 export schema_content
 
 # Validar nombre entidad
@@ -94,6 +96,7 @@ fi
 export entity="$entity_clean"
 export EntityPascal
 
+# ✅ Usar PROJECT_ROOT para ejecutar scripts de utilidades (instalados con el CLI)
 if [[ -n "$SCHEMA_FILE" ]]; then
   FIELDS=$(node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js" "$SCHEMA_FILE")
 elif [[ -n "$SCHEMA_CONTENT" ]]; then

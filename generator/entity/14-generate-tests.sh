@@ -3,6 +3,8 @@
 # shellcheck disable=SC2154,SC2086
 set -e
 
+AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
+
 TEST_PATH="tests/application/$entity"
 mkdir -p "$TEST_PATH"
 
@@ -60,9 +62,13 @@ update_entries=$(echo -e "$update_entries" | sed '$s/,\n$//')
 create_test_file() {
   local file_path="$1"
   shift
-  if [[ -f "$file_path" && "$AUTO_CONFIRM" != true ]]; then
-    read -rp "❗ El archivo $file_path ya existe. ¿Sobrescribir? (y/n): " confirm
-    [[ "$confirm" != "y" && "$confirm" != "Y" ]] && return
+  if [[ -f "$file_path" ]]; then
+    if [[ "$AUTO_CONFIRM" = true ]]; then
+      :
+    else
+      read -rp "❗ El archivo $file_path ya existe. ¿Sobrescribir? (y/n): " confirm
+      [[ "$confirm" != "y" && "$confirm" != "Y" ]] && return
+    fi
   fi
   cat >"$file_path" <<<"$*"
   echo "✅ Test generado: $file_path"

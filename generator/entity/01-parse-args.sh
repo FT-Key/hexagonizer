@@ -9,3 +9,5 @@ for arg in "$@"; do
   --json) USE_JSON=true ;;
   esac
 done
+
+export AUTO_CONFIRM

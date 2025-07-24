@@ -1,0 +1,24 @@
+{
+  "name": "Sale",
+  "fields": [
+    { "name": "userId", "required": true },
+    { "name": "type", "default": "service" },
+    { "name": "appointmentId" },
+    { "name": "orderId" },
+    { "name": "paymentId" },
+    { "name": "status", "default": "pending" },
+    { "name": "totalAmount", "default": 0 }
+  ],
+  "methods": [
+    {
+      "name": "markAsPaid",
+      "params": [],
+      "body": "this.status = 'paid';"
+    },
+    {
+      "name": "cancel",
+      "params": [],
+      "body": "this.status = 'cancelled';"
+    }
+  ]
+}

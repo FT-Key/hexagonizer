@@ -1,0 +1,19 @@
+{
+  "name": "Discount",
+  "fields": [
+    { "name": "name", "required": true },
+    { "name": "percentage", "default": 10 },
+    { "name": "target", "default": "product" },
+    { "name": "targetId" },
+    { "name": "active", "default": true },
+    { "name": "validFrom" },
+    { "name": "validTo" }
+  ],
+  "methods": [
+    {
+      "name": "isValidNow",
+      "params": [],
+      "body": "const now = new Date(); return (!this.validFrom || new Date(this.validFrom) <= now) && (!this.validTo || new Date(this.validTo) >= now);"
+    }
+  ]
+}

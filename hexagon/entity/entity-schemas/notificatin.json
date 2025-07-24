@@ -1,0 +1,16 @@
+{
+  "name": "Notification",
+  "fields": [
+    { "name": "userId", "required": true },
+    { "name": "message", "required": true },
+    { "name": "type", "default": "reminder" },
+    { "name": "read", "default": false }
+  ],
+  "methods": [
+    {
+      "name": "markAsRead",
+      "params": [],
+      "body": "this.read = true;"
+    }
+  ]
+}

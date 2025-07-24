@@ -1,0 +1,70 @@
+{
+  "name": "Appointment",
+  "description": "Represents a booking made by a user for a specific service.",
+  "auditable": true,
+  "softDelete": true,
+  "timestamps": true,
+  "ownership": true,
+  "fields": [
+    {
+      "name": "userId",
+      "type": "string",
+      "required": true,
+      "filterable": true
+    },
+    {
+      "name": "employeeId",
+      "type": "string",
+      "required": true,
+      "filterable": true
+    },
+    {
+      "name": "serviceId",
+      "type": "string",
+      "required": true,
+      "filterable": true
+    },
+    { "name": "dayScheduleId", "type": "string", "nullable": true },
+    {
+      "name": "time",
+      "type": "string",
+      "format": "time",
+      "required": true,
+      "sortable": true
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "default": "pending",
+      "enum": ["pending", "confirmed", "cancelled", "completed"],
+      "filterable": true,
+      "sortable": true
+    },
+    { "name": "notes", "type": "string", "maxLength": 500, "searchable": true },
+    {
+      "name": "paymentId",
+      "type": "string",
+      "nullable": true,
+      "sensitive": true
+    }
+  ],
+  "methods": [
+    {
+      "name": "confirm",
+      "params": [],
+      "body": "this.status = 'confirmed';",
+      "description": "Marks the appointment as confirmed.",
+      "returns": "void"
+    },
+    {
+      "name": "cancel",
+      "params": [],
+      "body": "this.status = 'cancelled';"
+    },
+    {
+      "name": "complete",
+      "params": [],
+      "body": "this.status = 'completed';"
+    }
+  ]
+}

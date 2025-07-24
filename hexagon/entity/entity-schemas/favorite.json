@@ -1,0 +1,8 @@
+{
+  "name": "Favorite",
+  "fields": [
+    { "name": "userId", "required": true },
+    { "name": "productId", "required": true }
+  ],
+  "methods": []
+}

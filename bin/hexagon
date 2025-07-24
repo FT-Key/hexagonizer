@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# bin/hexagon
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+show_menu() {
+  echo "🚀 Hexagon CLI"
+  echo "====================="
+  echo "1. Inicializar proyecto"
+  echo "2. Generar nueva entidad"
+  echo "3. Normalizar scripts (.sh)"
+  echo "4. Salir"
+  echo "====================="
+}
+
+read_option() {
+  local choice
+  read -rp "👉 Selecciona una opción [1-4]: " choice
+  case "$choice" in
+    1) bash "$DIR/scripts/init-project.sh" ;;
+    2) bash "$DIR/scripts/entity-generator.sh" ;;
+    3) bash "$DIR/hexagon/utils/normalizer-dos-to-unix.sh" ;;
+    4) echo "👋 Saliendo..."; exit 0 ;;
+    *) echo "❌ Opción inválida" ;;
+  esac
+  echo
+  read -rp "Presiona ENTER para continuar..."
+}
+
+while true; do
+  show_menu
+  read_option
+done

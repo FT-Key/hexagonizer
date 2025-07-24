@@ -1,0 +1,11 @@
+{
+  "name": "User",
+  "fields": [
+    { "name": "name", "required": true },
+    { "name": "email", "required": true },
+    { "name": "phone", "required": true },
+    { "name": "password", "required": true, "sensitive": true },
+    { "name": "role", "default": "customer" }
+  ],
+  "methods": []
+}

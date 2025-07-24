@@ -1,0 +1,11 @@
+{
+  "name": "AuditLog",
+  "fields": [
+    { "name": "userId", "required": true },
+    { "name": "action", "required": true },
+    { "name": "entity", "required": true },
+    { "name": "entityId", "required": true, "sensitive": true },
+    { "name": "timestamp" }
+  ],
+  "methods": []
+}

@@ -1,0 +1,30 @@
+{
+  "name": "Appointment",
+  "fields": [
+    { "name": "userId", "required": true },
+    { "name": "employeeId", "required": true },
+    { "name": "serviceId", "required": true },
+    { "name": "dayScheduleId" },
+    { "name": "time", "required": true },
+    { "name": "status", "default": "pending" },
+    { "name": "notes" },
+    { "name": "paymentId" }
+  ],
+  "methods": [
+    {
+      "name": "confirm",
+      "params": [],
+      "body": "this.status = 'confirmed';"
+    },
+    {
+      "name": "cancel",
+      "params": [],
+      "body": "this.status = 'cancelled';"
+    },
+    {
+      "name": "complete",
+      "params": [],
+      "body": "this.status = 'completed';"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "CartItem",
+  "fields": [
+    { "name": "userId", "required": true },
+    { "name": "productId", "required": true },
+    { "name": "quantity", "default": 1 },
+    { "name": "size" },
+    { "name": "color" }
+  ],
+  "methods": []
+}

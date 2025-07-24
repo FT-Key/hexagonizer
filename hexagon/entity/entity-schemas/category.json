@@ -1,0 +1,5 @@
+{
+  "name": "Category",
+  "fields": [{ "name": "name", "required": true }],
+  "methods": []
+}

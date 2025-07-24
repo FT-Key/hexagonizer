@@ -1,0 +1,11 @@
+{
+  "name": "Payment",
+  "fields": [
+    { "name": "method", "default": "cash" },
+    { "name": "status", "default": "pending" },
+    { "name": "amount", "default": 0 },
+    { "name": "date" },
+    { "name": "saleId" }
+  ],
+  "methods": []
+}

@@ -1,0 +1,15 @@
+{
+  "name": "DaySchedule",
+  "fields": [
+    { "name": "date", "required": true },
+    { "name": "employeeId", "required": true },
+    { "name": "slots", "default": [] }
+  ],
+  "methods": [
+    {
+      "name": "addSlot",
+      "params": ["time"],
+      "body": "this.slots.push({ time, available: true });"
+    }
+  ]
+}

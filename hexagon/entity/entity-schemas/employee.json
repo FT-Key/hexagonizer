@@ -1,0 +1,9 @@
+{
+  "name": "Employee",
+  "fields": [
+    { "name": "name", "required": true },
+    { "name": "services", "default": [] },
+    { "name": "available", "default": true }
+  ],
+  "methods": []
+}

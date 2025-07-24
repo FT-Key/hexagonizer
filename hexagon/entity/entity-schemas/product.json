@@ -1,0 +1,36 @@
+{
+  "name": "Product",
+  "fields": [
+    { "name": "name", "required": true },
+    { "name": "description" },
+    { "name": "price", "default": 0 },
+    { "name": "stock", "default": 0 },
+    { "name": "size", "default": [] },
+    { "name": "color", "default": [] },
+    { "name": "images", "default": [] },
+    { "name": "categoryId" },
+    { "name": "active", "default": true }
+  ],
+  "methods": [
+    {
+      "name": "decreaseStock",
+      "params": ["quantity"],
+      "body": "this.stock = Math.max(this.stock - quantity, 0);"
+    },
+    {
+      "name": "isAvailable",
+      "params": ["quantity"],
+      "body": "return this.stock >= quantity;"
+    },
+    {
+      "name": "applyDiscount",
+      "params": ["percentage"],
+      "body": "this._price = this._price * (1 - percentage / 100); this._touchUpdatedAt();"
+    },
+    {
+      "name": "resetPrice",
+      "params": [],
+      "body": "this._price = 0; this._touchUpdatedAt();"
+    }
+  ]
+}

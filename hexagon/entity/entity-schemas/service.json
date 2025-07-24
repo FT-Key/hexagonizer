@@ -1,0 +1,18 @@
+{
+  "name": "Service",
+  "fields": [
+    { "name": "name", "required": true },
+    { "name": "description" },
+    { "name": "price", "default": 0 },
+    { "name": "durationMinutes", "default": 30 },
+    { "name": "image" },
+    { "name": "active", "default": true }
+  ],
+  "methods": [
+    {
+      "name": "getPriceWithDiscount",
+      "params": ["percentage"],
+      "body": "return this.price - (this.price * (percentage / 100));"
+    }
+  ]
+}

@@ -120,6 +120,9 @@ EOF
 )"
 
 # ✅ Reutilizar generación de middlewares de query
-source ./hexagonizer/common/generate-query-middlewares.sh
+# Desde generator/project/06-generate-base-middlewares.sh
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+bash "$PROJECT_ROOT/generator/common/generate-query-middlewares.sh" "$@"
 
 echo "✅ Middlewares base (incluyendo filtros, orden, búsqueda, paginación) verificados o generados."

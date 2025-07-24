@@ -1,9 +1,9 @@
 {
   "name": "hexagonizer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "CLI para generar proyectos y entidades hexagonales en Node.js",
   "bin": {
-    "hexagon": "./bin/hexagon"
+    "hexagonizer": "./bin/hexagon"
   },
   "keywords": [
     "cli",
@@ -13,5 +13,6 @@
     "node"
   ],
   "author": "Franco Toledo",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module"
 }

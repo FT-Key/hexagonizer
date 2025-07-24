@@ -12,10 +12,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INIT_ARGS=("$@")
 
 # Ejecutar primer módulo para parsear args
-bash "$PROJECT_ROOT/hexagon/project/00-parse-args.sh"
+bash "$PROJECT_ROOT/generator/project/00-parse-args.sh"
 
 # Importar función confirm_action
-source "$PROJECT_ROOT/hexagon/common/confirm-action.sh"
+source "$PROJECT_ROOT/generator/common/confirm-action.sh"
 
 # Preguntar si se desean crear middlewares base
 if [ "$AUTO_YES" = true ]; then
@@ -30,7 +30,7 @@ fi
 export CREATE_MIDDLEWARES
 
 # Ejecutar el resto de módulos (excepto 00-parse-args.sh)
-for script in "$PROJECT_ROOT/hexagon/project"/[0-9][0-9]-*.sh; do
+for script in "$PROJECT_ROOT/generator/project"/[0-9][0-9]-*.sh; do
   if [[ "$script" != *"00-parse-args.sh" ]]; then
     echo "▶ Ejecutando $script"
     bash "$script"

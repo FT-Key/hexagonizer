@@ -1,8 +1,13 @@
 #!/bin/bash
 # hexagonizer/project/09-setup-docker.sh
-
 # shellcheck disable=SC1091
-source ./hexagonizer/common/confirm-action.sh
+
+# Obtener ruta absoluta al root del CLI (asumiendo que estamos en hexagonizer/project)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Importar confirm-action desde common
+source "$PROJECT_ROOT/generator/common/confirm-action.sh"
 
 # Preguntar si desea configurar Docker
 if [[ "$AUTO_YES" == true ]]; then

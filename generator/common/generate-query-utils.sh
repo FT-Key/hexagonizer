@@ -6,10 +6,7 @@ QUERY_UTILS_FILE="$UTILS_PATH/query-utils.js"
 
 mkdir -p "$UTILS_PATH"
 
-AUTO_CONFIRM=false
-if [[ "$1" == "-y" ]]; then
-  AUTO_CONFIRM=true
-fi
+AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
 
 confirm_action() {
   local prompt=$1

@@ -145,7 +145,6 @@ fi
   echo "  _touchUpdatedAt() {"
   echo "    this._updatedAt = new Date();"
   echo "  }"
-  echo ""
   printf "%s\n" "${method_lines[@]}"
   echo ""
   echo "  toJSON() {"

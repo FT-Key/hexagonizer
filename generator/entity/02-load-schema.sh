@@ -1,13 +1,8 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC2154
 
-# Root del proyecto donde está instalado el CLI (hexagonizer)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-
-# Directorio desde donde se está ejecutando el comando (el proyecto del usuario)
-CLI_ROOT="$(pwd)"
-
-SCHEMA_DIR="$CLI_ROOT/entity-schemas"
+# Usar el directorio actual del usuario como base
+SCHEMA_DIR="./entity-schemas"
 
 if [[ "$USE_JSON" == true ]]; then
   echo "📁 Ingrese ruta al archivo JSON de esquema de entidad"
@@ -15,17 +10,15 @@ if [[ "$USE_JSON" == true ]]; then
   read -r input_path
 
   if [[ -z "$input_path" ]]; then
+    # Crear directorio si no existe
     if [[ ! -d "$SCHEMA_DIR" ]]; then
+      echo "📂 El directorio $SCHEMA_DIR no existe. Creándolo..."
       mkdir -p "$SCHEMA_DIR"
-      echo "📂 Se creó el directorio '$SCHEMA_DIR' para que coloques tus esquemas JSON de entidades."
-      echo "   Agrega tus archivos aquí y vuelve a ejecutar el comando."
-      exit 1
     fi
 
     mapfile -t json_files < <(find "$SCHEMA_DIR" -maxdepth 1 -type f -name '*.json' | sort)
     if [[ ${#json_files[@]} -eq 0 ]]; then
       echo "❌ No se encontraron archivos JSON en $SCHEMA_DIR"
-      echo "   Agrega archivos .json a ese directorio y vuelve a intentar."
       exit 1
     fi
 
@@ -52,6 +45,7 @@ if [[ "$USE_JSON" == true ]]; then
   fi
 
   schema_content=$(cat "$SCHEMA_FILE")
+  SCHEMA_CONTENT="$schema_content"
   ENTITY_NAME=$(basename "$SCHEMA_FILE" .json | tr '[:upper:]' '[:lower:]')
 
 else
@@ -67,8 +61,8 @@ else
     { "name": "active", "default": true },
     { "name": "createdAt", "default": "new Date()" },
     { "name": "updatedAt", "default": "new Date()" },
-    { "name": "deletedAt", "default": null },
-    { "name": "ownedBy", "default": null }
+    { "name": "deletedAt", "default": null, "sensitive": true },
+    { "name": "ownedBy", "default": null, "sensitive": true }
   ],
   "methods": []
 }
@@ -76,12 +70,13 @@ EOF
   )
 
   SCHEMA_FILE=""
+  SCHEMA_CONTENT="$schema_content"
 fi
 
-# Exportar
-export SCHEMA_CONTENT="$(cat "$SCHEMA_FILE")"
+# Exportar todo
 export entity="$ENTITY_NAME"
 export SCHEMA_FILE
+export SCHEMA_CONTENT
 export schema_content
 
 # Validar nombre entidad
@@ -96,7 +91,7 @@ fi
 export entity="$entity_clean"
 export EntityPascal
 
-# ✅ Usar PROJECT_ROOT para ejecutar scripts de utilidades (instalados con el CLI)
+# ✅ Generar FIELDS desde JSON (de archivo o contenido directo)
 if [[ -n "$SCHEMA_FILE" ]]; then
   FIELDS=$(node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js" "$SCHEMA_FILE")
 elif [[ -n "$SCHEMA_CONTENT" ]]; then

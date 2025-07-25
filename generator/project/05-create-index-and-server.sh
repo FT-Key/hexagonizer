@@ -231,7 +231,7 @@ write_file_with_confirm "src/public/index.html" "$(
       transform-style: preserve-3d;
       animation: rotate 15s linear infinite alternate;
     }
-    
+
     .hexagon:hover .segment-face {
       box-shadow:
         0 0 40px rgba(0, 255, 157, 0.6),
@@ -363,10 +363,13 @@ write_file_with_confirm "src/public/index.html" "$(
     }
 
     @keyframes pulse {
-      0%, 100% {
+
+      0%,
+      100% {
         transform: translate(-50%, -50%) scale(1);
         opacity: 0.5;
       }
+
       50% {
         transform: translate(-50%, -50%) scale(1.1);
         opacity: 0.8;
@@ -391,9 +394,12 @@ write_file_with_confirm "src/public/index.html" "$(
     }
 
     @keyframes float {
-      0%, 100% {
+
+      0%,
+      100% {
         transform: translateY(0px) rotate(0deg);
       }
+
       50% {
         transform: translateY(-20px) rotate(180deg);
       }
@@ -417,32 +423,69 @@ write_file_with_confirm "src/public/index.html" "$(
         font-size: 0.8rem;
       }
 
+      .hexagon {
+        transform: scale(0.6);
+        width: 160px;
+        height: 160px;
+      }
+
       .hexagon-segment {
-        width: 120px;
-        height: 120px;
+        width: 80px;
+        height: 24px;
+        margin-left: -40px;
+        margin-top: -12px;
       }
 
       .segment-face.face-front,
       .segment-face.face-back {
-        width: 75px;
-        height: 22px;
+        width: 80px;
+        height: 24px;
       }
 
       .segment-face.face-left,
       .segment-face.face-right {
-        width: 15px;
-        height: 22px;
+        width: 16px;
+        height: 24px;
+      }
+
+      .segment-face.face-right {
+        display: none;
       }
 
       .segment-face.face-top,
       .segment-face.face-bottom {
-        width: 75px;
-        height: 15px;
+        width: 80px;
+        height: 16px;
+      }
+
+      /* Ajustar la profundidad del hexágono */
+      .segment-1 {
+        transform: translateZ(60px) rotateY(0deg);
+      }
+
+      .segment-2 {
+        transform: rotateY(60deg) translateZ(60px);
+      }
+
+      .segment-3 {
+        transform: rotateY(120deg) translateZ(60px);
+      }
+
+      .segment-4 {
+        transform: rotateY(180deg) translateZ(60px);
+      }
+
+      .segment-5 {
+        transform: rotateY(240deg) translateZ(60px);
+      }
+
+      .segment-6 {
+        transform: rotateY(300deg) translateZ(60px);
       }
 
       .glow-ring {
-        width: 250px;
-        height: 250px;
+        width: 220px;
+        height: 220px;
       }
     }
   </style>

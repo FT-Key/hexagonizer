@@ -35,6 +35,7 @@ const customFields = (schema.fields || [])
     min: f.min ?? '',
     max: f.max ?? '',
     nullable: f.nullable ?? false,
+    default: typeof f.default !== 'undefined' ? JSON.stringify(f.default) : '',
     dummy: typeof f.dummy !== 'undefined' ? f.dummy : `"${f.name}_test"`,
     updated: `"${f.name}_updated"`
   }));
@@ -53,6 +54,7 @@ const genericFields = GENERIC_FIELDS.map(name => {
     min: originalField?.min ?? '',
     max: originalField?.max ?? '',
     nullable: originalField?.nullable ?? false,
+    default: originalField && typeof originalField.default !== 'undefined' ? JSON.stringify(originalField.default) : '',
     dummy: originalField && typeof originalField.dummy !== 'undefined' ? originalField.dummy : `"${name}_test"`,
     updated: `"${name}_updated"`
   };

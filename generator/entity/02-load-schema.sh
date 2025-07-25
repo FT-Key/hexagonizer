@@ -1,9 +1,8 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC2154
 
-SCHEMA_DIR="./hexagonizer/entity/entity-schemas"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Usar el directorio actual del usuario como base
+SCHEMA_DIR="./entity-schemas"
 
 if [[ "$USE_JSON" == true ]]; then
   echo "📁 Ingrese ruta al archivo JSON de esquema de entidad"
@@ -11,9 +10,10 @@ if [[ "$USE_JSON" == true ]]; then
   read -r input_path
 
   if [[ -z "$input_path" ]]; then
+    # Crear directorio si no existe
     if [[ ! -d "$SCHEMA_DIR" ]]; then
-      echo "❌ Directorio no existe: $SCHEMA_DIR"
-      exit 1
+      echo "📂 El directorio $SCHEMA_DIR no existe. Creándolo..."
+      mkdir -p "$SCHEMA_DIR"
     fi
 
     mapfile -t json_files < <(find "$SCHEMA_DIR" -maxdepth 1 -type f -name '*.json' | sort)
@@ -44,10 +44,9 @@ if [[ "$USE_JSON" == true ]]; then
     SCHEMA_FILE="$input_path"
   fi
 
-  # Leer contenido y extraer nombre
   schema_content=$(cat "$SCHEMA_FILE")
+  SCHEMA_CONTENT="$schema_content"
   ENTITY_NAME=$(basename "$SCHEMA_FILE" .json | tr '[:upper:]' '[:lower:]')
-  SCHEMA_CONTENT="" # <- para evitar colisiones
 
 else
   read -r -p "📝 Nombre de la entidad (ej. user, product): " entity

@@ -70,7 +70,14 @@ for i in "${!names[@]}"; do
     constructor_body_lines+=("    if ($name === undefined) throw new Error('$name is required');")
     constructor_body_lines+=("    this._$name = $name;")
   elif [[ -n "$default" ]]; then
-    constructor_body_lines+=("    this._$name = $name !== undefined ? $name : $default;")
+    if [[ "$default" =~ ^\".*\"$ ]]; then
+      # Es un string JSON, quitar las comillas externas para asignar con comillas explícitas
+      default_value="${default:1:-1}"
+      constructor_body_lines+=("    this._$name = $name !== undefined ? $name : \"$default_value\";")
+    else
+      # Es número, booleano, array, objeto, etc.
+      constructor_body_lines+=("    this._$name = $name !== undefined ? $name : $default;")
+    fi
   else
     constructor_body_lines+=("    this._$name = $name;")
   fi

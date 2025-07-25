@@ -17,17 +17,15 @@ fi
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 if [[ -n "$SCHEMA_FILE" ]]; then
-  # Usar archivo físico
   parsed_json=$(node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js" "$SCHEMA_FILE")
 elif [[ -n "$SCHEMA_CONTENT" ]]; then
-  # Usar JSON en memoria
   parsed_json=$(echo "$SCHEMA_CONTENT" | node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js")
 else
   echo "❌ No hay esquema definido para parsear en generate-validation"
   exit 1
 fi
 
-# Exportar arrays legibles por Bash, con valores reales (no literales)
+# Leer campos del JSON
 while IFS='=' read -r key value; do
   eval "$key=$value"
 done < <(
@@ -81,58 +79,64 @@ for i in "${!v_names[@]}"; do
 
   [[ -z "$name" || "$name" == "null" ]] && continue
 
+  field_lines=""
+
   if [[ "$required" == "true" && "$nullable" != "true" ]]; then
-    validation_lines+=$(printf "  if (data.%s === undefined || data.%s === null) throw new Error('%s is required');\n" "$name" "$name" "$name")
+    field_lines+="  if (data.$name === undefined || data.$name === null) throw new Error('$name is required');"$'\n'
   fi
 
   if [[ -n "$type" ]]; then
     case "$type" in
     string | number | boolean | object)
-      validation_lines+=$(printf "  if (data.%s != null && typeof data.%s !== '%s') throw new Error('%s must be a %s');\n" "$name" "$name" "$type" "$name" "$type")
+      field_lines+="  if (data.$name != null && typeof data.$name !== '$type') throw new Error('$name must be a $type');"$'\n'
       ;;
     esac
   fi
 
   if [[ -n "$minLength" ]]; then
-    validation_lines+=$(printf "  if (data.%s && data.%s.length < %s) throw new Error('%s must have at least %s characters');\n" "$name" "$name" "$minLength" "$name" "$minLength")
+    field_lines+="  if (data.$name && data.$name.length < $minLength) throw new Error('$name must have at least $minLength characters');"$'\n'
   fi
 
   if [[ -n "$maxLength" ]]; then
-    validation_lines+=$(printf "  if (data.%s && data.%s.length > %s) throw new Error('%s must have at most %s characters');\n" "$name" "$name" "$maxLength" "$name" "$maxLength")
+    field_lines+="  if (data.$name && data.$name.length > $maxLength) throw new Error('$name must have at most $maxLength characters');"$'\n'
   fi
 
   if [[ -n "$min" ]]; then
-    validation_lines+=$(printf "  if (data.%s < %s) throw new Error('%s must be >= %s');\n" "$name" "$min" "$name" "$min")
+    field_lines+="  if (data.$name < $min) throw new Error('$name must be >= $min');"$'\n'
   fi
 
   if [[ -n "$max" ]]; then
-    validation_lines+=$(printf "  if (data.%s > %s) throw new Error('%s must be <= %s');\n" "$name" "$max" "$name" "$max")
+    field_lines+="  if (data.$name > $max) throw new Error('$name must be <= $max');"$'\n'
   fi
 
   if [[ "$format" == "email" ]]; then
-    validation_lines+=$(printf "  if (data.%s && !/^\\S+@\\S+\\.\\S+$/.test(data.%s)) throw new Error('%s must be a valid email');\n" "$name" "$name" "$name")
+    field_lines+="  if (data.$name && !/^\\S+@\\S+\\.\\S+$/.test(data.$name)) throw new Error('$name must be a valid email');"$'\n'
   fi
 
   if [[ "$format" == "time" ]]; then
-    validation_lines+=$(printf "  if (data.%s && !/^\\d{2}:\\d{2}$/.test(data.%s)) throw new Error('%s must be in HH:MM format');\n" "$name" "$name" "$name")
+    field_lines+="  if (data.$name && !/^\\d{2}:\\d{2}$/.test(data.$name)) throw new Error('$name must be in HH:MM format');"$'\n'
   fi
 
   if [[ -n "$enum" ]]; then
-    # Convertir enums separados por comas en array JS: ['val1','val2']
     IFS=',' read -r -a enum_array <<<"$enum"
     enum_js="["
-    for val in "${enum_array[@]}"; do
-      enum_js+="'$val',"
-    done
-    enum_js="${enum_js%,}]" # quita la última coma y cierra array
+    for val in "${enum_array[@]}"; do enum_js+="'$val',"; done
+    enum_js="${enum_js%,}]"
+    field_lines+="  if (data.$name && !$enum_js.includes(data.$name)) throw new Error('$name must be one of: $enum_display');"$'\n'
+  fi
 
-    validation_lines+=$(printf "  if (data.%s && !%s.includes(data.%s)) throw new Error('%s must be one of: %s');\n" "$name" "$enum_js" "$name" "$name" "$enum_display")
+  # Agregar bloque con salto de línea solo si field_lines no está vacío
+  if [[ -n "$field_lines" ]]; then
+    [[ -n "$validation_lines" ]] && validation_lines+=$'\n'
+    validation_lines+="$field_lines"
   fi
 done
 
+# Escribir archivo final
 cat <<EOF >"$validate_file"
 export function validate${EntityPascal}(data) {
-$validation_lines  return true;
+$validation_lines
+  return true;
 }
 EOF
 

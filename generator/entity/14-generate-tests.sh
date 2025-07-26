@@ -9,7 +9,7 @@ TEST_PATH="tests/application/$entity"
 mkdir -p "$TEST_PATH"
 
 # Validar que FIELDS venga desde load-schema
-if [[ -z "$FIELDS" ]]; then
+if [[ -z "$PARSED_FIELDS" ]]; then
   echo "❌ No se encontraron campos en \$FIELDS para generate-tests"
   exit 1
 fi
@@ -18,7 +18,7 @@ fi
 # Extraer campos con Node
 FIELDS_JS=$(node -e "
   try {
-    const { fields } = JSON.parse(process.env.FIELDS);
+    const { fields } = JSON.parse(process.env.PARSED_FIELDS);
     if (!Array.isArray(fields) || fields.length === 0) {
       throw new Error('No se encontraron campos en el esquema');
     }
@@ -33,7 +33,7 @@ FIELDS_JS=$(node -e "
     console.error('❌ Error al parsear FIELDS en generate-tests:', e.message);
     process.exit(1);
   }
-" FIELDS="$FIELDS")
+" PARSED_FIELDS="$PARSED_FIELDS")
 
 eval "$FIELDS_JS"
 

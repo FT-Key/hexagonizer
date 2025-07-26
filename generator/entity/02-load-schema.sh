@@ -1,31 +1,27 @@
 #!/bin/bash
+# generator/entity/02-load-schema.sh
 # shellcheck disable=SC2034,SC2154
+set -e
 
-# Usar el directorio actual del usuario como base
 SCHEMA_DIR="./entity-schemas"
 
-if [[ "$USE_JSON" == true ]]; then
+load_schema_from_json() {
   echo "📁 Ingrese ruta al archivo JSON de esquema de entidad"
   echo "   (o presione Enter para listar archivos disponibles en $SCHEMA_DIR):"
   read -r input_path
 
   if [[ -z "$input_path" ]]; then
-    # Crear directorio si no existe
-    if [[ ! -d "$SCHEMA_DIR" ]]; then
-      echo "📂 El directorio $SCHEMA_DIR no existe. Creándolo..."
-      mkdir -p "$SCHEMA_DIR"
-    fi
+    [[ ! -d "$SCHEMA_DIR" ]] && mkdir -p "$SCHEMA_DIR"
 
     mapfile -t json_files < <(find "$SCHEMA_DIR" -maxdepth 1 -type f -name '*.json' | sort)
-    if [[ ${#json_files[@]} -eq 0 ]]; then
+    [[ ${#json_files[@]} -eq 0 ]] && {
       echo "❌ No se encontraron archivos JSON en $SCHEMA_DIR"
       exit 1
-    fi
+    }
 
     echo "Seleccione el archivo JSON para usar:"
     for i in "${!json_files[@]}"; do
-      fname=$(basename "${json_files[i]}")
-      echo "  $((i + 1))) $fname"
+      echo "  $((i + 1))) $(basename "${json_files[i]}")"
     done
 
     read -r -p "Ingrese número (1-${#json_files[@]}): " selected_num
@@ -37,22 +33,22 @@ if [[ "$USE_JSON" == true ]]; then
 
     SCHEMA_FILE="${json_files[selected_num - 1]}"
   else
-    if [[ ! -f "$input_path" ]]; then
+    [[ ! -f "$input_path" ]] && {
       echo "❌ No se encontró el archivo JSON: $input_path"
       exit 1
-    fi
+    }
     SCHEMA_FILE="$input_path"
   fi
 
-  schema_content=$(cat "$SCHEMA_FILE")
-  SCHEMA_CONTENT="$schema_content"
+  SCHEMA_CONTENT=$(cat "$SCHEMA_FILE")
   ENTITY_NAME=$(basename "$SCHEMA_FILE" .json | tr '[:upper:]' '[:lower:]')
+}
 
-else
+create_default_schema() {
   read -r -p "📝 Nombre de la entidad (ej. user, product): " entity
   ENTITY_NAME="${entity,,}"
 
-  schema_content=$(
+  SCHEMA_CONTENT=$(
     cat <<EOF
 {
   "name": "$ENTITY_NAME",
@@ -68,39 +64,42 @@ else
 }
 EOF
   )
-
   SCHEMA_FILE=""
-  SCHEMA_CONTENT="$schema_content"
-fi
+}
 
-# Exportar todo
-export entity="$ENTITY_NAME"
-export SCHEMA_FILE
-export SCHEMA_CONTENT
-export schema_content
+validate_entity_name() {
+  local clean_name=$(echo "$ENTITY_NAME" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -cd '[:alnum:]')
+  [[ -z "$clean_name" ]] && {
+    echo "❌ Error: El nombre de la entidad no puede estar vacío o inválido."
+    exit 1
+  }
 
-# Validar nombre entidad
-entity_clean=$(echo "$ENTITY_NAME" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -cd '[:alnum:]')
-EntityPascal="$(tr '[:lower:]' '[:upper:]' <<<"${entity_clean:0:1}")${entity_clean:1}"
+  entity="$clean_name"
+  EntityPascal="$(tr '[:lower:]' '[:upper:]' <<<"${clean_name:0:1}")${clean_name:1}"
+}
 
-if [[ -z "$entity_clean" ]]; then
-  echo "❌ Error: El nombre de la entidad no puede estar vacío o inválido."
-  exit 1
-fi
+parse_schema_fields() {
+  if [[ -n "$SCHEMA_FILE" ]]; then
+    PARSED_FIELDS=$(node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js" "$SCHEMA_FILE")
+  elif [[ -n "$SCHEMA_CONTENT" ]]; then
+    PARSED_FIELDS=$(echo "$SCHEMA_CONTENT" | node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js")
+  else
+    echo "❌ No se puede generar campos: sin esquema"
+    exit 1
+  fi
+}
 
-export entity="$entity_clean"
-export EntityPascal
-
-# ✅ Generar FIELDS desde JSON (de archivo o contenido directo)
-if [[ -n "$SCHEMA_FILE" ]]; then
-  FIELDS=$(node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js" "$SCHEMA_FILE")
-elif [[ -n "$SCHEMA_CONTENT" ]]; then
-  FIELDS=$(echo "$SCHEMA_CONTENT" | node "$PROJECT_ROOT/generator/utils/parse-schema-fields.js")
+# Main execution
+if [[ "$USE_JSON" == true ]]; then
+  load_schema_from_json
 else
-  echo "❌ No se puede generar campos: sin esquema"
-  exit 1
+  create_default_schema
 fi
 
-export FIELDS
+validate_entity_name
+parse_schema_fields
 
-echo "✅ LoadSchema"
+# Export variables for other scripts
+export entity EntityPascal SCHEMA_FILE SCHEMA_CONTENT PARSED_FIELDS
+
+echo "✅ LoadSchema: $entity ($EntityPascal)"

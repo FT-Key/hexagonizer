@@ -4,7 +4,6 @@
 
 # Función principal
 main() {
-  # Validar que las variables necesarias estén definidas
   if [[ -z "${entity:-}" || -z "${EntityPascal:-}" ]]; then
     echo "❌ Error: Las variables 'entity' y 'EntityPascal' deben estar definidas"
     echo "Uso: $0 <entity> <EntityPascal>"
@@ -15,14 +14,11 @@ main() {
   generate_controller
 }
 
-# Función para generar el controlador
 generate_controller() {
   local controller_file="src/interfaces/http/$entity/${entity}.controller.js"
 
-  # Crear directorio si no existe
   mkdir -p "$(dirname "$controller_file")"
 
-  # Preguntar si ya existe, excepto si -y está activado
   if [[ -f "$controller_file" && "$AUTO_CONFIRM" != true ]]; then
     read -r -p "⚠️  El archivo $controller_file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
@@ -31,13 +27,10 @@ generate_controller() {
     fi
   fi
 
-  # Generar el archivo del controlador
   create_controller_content "$controller_file"
-
   echo "✅ Controlador generado: $controller_file"
 }
 
-# Función para crear el contenido del controlador
 create_controller_content() {
   local controller_file="$1"
 
@@ -69,6 +62,7 @@ export const get${EntityPascal}Controller = async (req, res) => {
 export const update${EntityPascal}Controller = async (req, res) => {
   const useCase = new Update${EntityPascal}(repository);
   const item = await useCase.execute(req.params.id, req.body);
+  if (!item) return res.status(404).json({ error: '${EntityPascal} not found' });
   res.json(item);
 };
 
@@ -81,23 +75,30 @@ export const delete${EntityPascal}Controller = async (req, res) => {
 export const deactivate${EntityPascal}Controller = async (req, res) => {
   const useCase = new Deactivate${EntityPascal}(repository);
   const item = await useCase.execute(req.params.id);
+  if (!item) return res.status(404).json({ error: '${EntityPascal} not found' });
   res.json(item);
 };
 
 export const list${EntityPascal}sController = async (req, res) => {
-  const useCase = new List${EntityPascal}s(repository);
-  const items = await useCase.execute({
-    filters: req.filters,
-    search: req.search,
-    pagination: req.pagination,
-    sort: req.sort,
-  });
-  res.json(items);
+  try {
+    const useCase = new List${EntityPascal}s(repository);
+    const { filters, search, pagination, sort } = req;
+
+    const { data, meta } = await useCase.execute({
+      filters,
+      search,
+      pagination,
+      sort,
+    });
+
+    res.status(200).json({ data, meta });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 EOF
 }
 
-# Manejo de argumentos si se ejecuta directamente
 parse_arguments() {
   if [[ $# -ge 2 ]]; then
     entity="$1"
@@ -105,13 +106,11 @@ parse_arguments() {
   fi
 }
 
-# Ejecutar si se llama directamente
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   parse_arguments "$@"
   main "$@"
 fi
 
-# Llamada implícita si fue sourced desde otro script
 if [[ -n "${entity:-}" && -n "${EntityPascal:-}" ]]; then
   main "$@"
 fi

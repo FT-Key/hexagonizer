@@ -233,10 +233,25 @@ $(generate_constructor)
    * @param {Object} options.sort - Configuración de ordenamiento
    * @param {string} options.sort.field - Campo por el que ordenar
    * @param {string} options.sort.direction - Dirección del ordenamiento (asc|desc)
-   * @returns {Promise<${entity_pascal}[]>}
+   * @returns {Promise<{ data: ${entity_pascal}[], meta: Object }>}
    */
   async execute({ filters = {}, search = '', pagination = {}, sort = {} } = {}) {
-    return this.repository.findAll({ filters, search, pagination, sort });
+    const data = await this.repository.findAll({ filters, search, pagination, sort });
+    const total = await this.repository.count(filters);
+    const { page = 1, limit = 10 } = pagination;
+    const pages = Math.ceil(total / limit || 1);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        pages,
+        hasNext: page < pages,
+        hasPrev: page > 1
+      }
+    };
   }
 }
 EOF

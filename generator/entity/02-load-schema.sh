@@ -92,8 +92,10 @@ parse_schema_fields() {
 # Main execution
 if [[ "$USE_JSON" == true ]]; then
   load_schema_from_json
+  export has_json=true
 else
   create_default_schema
+  export has_json=false
 fi
 
 validate_entity_name

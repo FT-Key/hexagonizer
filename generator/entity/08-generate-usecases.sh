@@ -28,7 +28,6 @@ generate_use_case() {
   if [[ "$action" == "create" ]]; then
     {
       echo "import { ${EntityPascal}Factory } from '../../../domain/$entity/${entity}-factory.js';"
-      echo "import crypto from 'crypto';"
       echo ""
       echo "export class Create${EntityPascal} {"
       echo "  constructor(repository) {"
@@ -36,17 +35,8 @@ generate_use_case() {
       echo "  }"
       echo ""
       echo "  async execute(data) {"
-      if $has_json; then
-        echo "    const entity = ${EntityPascal}Factory.create({"
-        echo "      ...data,"
-        echo "      id: crypto.randomUUID(),"
-        echo "    });"
-        echo "    return this.repository.save(entity);"
-      else
-        echo "    // TODO: completar lógica con atributos personalizados"
-        echo "    const entity = { id: crypto.randomUUID(), ...data };"
-        echo "    return this.repository.save(entity);"
-      fi
+      echo "    const entity = ${EntityPascal}Factory.create(data);"
+      echo "    return this.repository.save(entity);"
       echo "  }"
       echo "}"
     } >"$file_path"
@@ -64,7 +54,7 @@ generate_use_case() {
       echo "    if (!id) throw new Error('${EntityPascal} id is required');"
       echo "    const existing = await this.repository.findById(id);"
       echo "    if (!existing) throw new Error('${EntityPascal} not found');"
-      if $has_json; then
+      if [[ "$has_json" == true ]]; then
         echo "    const updated = ${EntityPascal}Factory.create({"
         echo "      ...existing,"
         echo "      ...data,"

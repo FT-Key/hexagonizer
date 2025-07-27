@@ -395,3 +395,8 @@ main() {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
+
+# Llamada implícita si fue sourced desde otro script
+if [[ -n "${entity:-}" && -n "${EntityPascal:-}" ]]; then
+  main "$@"
+fi

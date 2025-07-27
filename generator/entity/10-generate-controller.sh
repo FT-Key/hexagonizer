@@ -1,21 +1,47 @@
 #!/bin/bash
 # shellcheck disable=SC2154
-# 4. CONTROLLER
+# 4. CONTROLLER Generator
 
-controller_file="src/interfaces/http/$entity/${entity}.controller.js"
-mkdir -p "$(dirname "$controller_file")"
-
-# Preguntar si ya existe, excepto si -y
-if [[ -f "$controller_file" && "$AUTO_CONFIRM" != true ]]; then
-  read -r -p "⚠️  El archivo $controller_file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "⏭️  Controlador omitido: $controller_file"
-    exit 0
+# Función principal
+main() {
+  # Validar que las variables necesarias estén definidas
+  if [[ -z "${entity:-}" || -z "${EntityPascal:-}" ]]; then
+    echo "❌ Error: Las variables 'entity' y 'EntityPascal' deben estar definidas"
+    echo "Uso: $0 <entity> <EntityPascal>"
+    echo "Ejemplo: $0 user User"
+    return 1
   fi
-fi
 
-# Generar el archivo
-cat <<EOF >"$controller_file"
+  generate_controller
+}
+
+# Función para generar el controlador
+generate_controller() {
+  local controller_file="src/interfaces/http/$entity/${entity}.controller.js"
+
+  # Crear directorio si no existe
+  mkdir -p "$(dirname "$controller_file")"
+
+  # Preguntar si ya existe, excepto si -y está activado
+  if [[ -f "$controller_file" && "$AUTO_CONFIRM" != true ]]; then
+    read -r -p "⚠️  El archivo $controller_file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+      echo "⏭️  Controlador omitido: $controller_file"
+      return 0
+    fi
+  fi
+
+  # Generar el archivo del controlador
+  create_controller_content "$controller_file"
+
+  echo "✅ Controlador generado: $controller_file"
+}
+
+# Función para crear el contenido del controlador
+create_controller_content() {
+  local controller_file="$1"
+
+  cat <<EOF >"$controller_file"
 import { InMemory${EntityPascal}Repository } from '../../../infrastructure/$entity/in-memory-$entity-repository.js';
 
 import { Create${EntityPascal} } from '../../../application/$entity/use-cases/create-$entity.js';
@@ -69,5 +95,23 @@ export const list${EntityPascal}sController = async (req, res) => {
   res.json(items);
 };
 EOF
+}
 
-echo "✅ Controlador generado: $controller_file"
+# Manejo de argumentos si se ejecuta directamente
+parse_arguments() {
+  if [[ $# -ge 2 ]]; then
+    entity="$1"
+    EntityPascal="$2"
+  fi
+}
+
+# Ejecutar si se llama directamente
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  parse_arguments "$@"
+  main "$@"
+fi
+
+# Llamada implícita si fue sourced desde otro script
+if [[ -n "${entity:-}" && -n "${EntityPascal:-}" ]]; then
+  main "$@"
+fi

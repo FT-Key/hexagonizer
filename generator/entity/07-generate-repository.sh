@@ -84,7 +84,7 @@ create_directory_structure() {
 generate_in_memory_repository() {
   cat <<EOF
 import { ${EntityPascal} } from '../../domain/${entity}/${entity}.js';
-import { mock${EntityPascal} } from '../../domain/${entity}/mocks.js';
+import { mock${EntityPascal}List } from '../../domain/${entity}/mocks.js';
 import {
   applyFilters,
   applySearch,
@@ -99,7 +99,7 @@ import {
 export class InMemory${EntityPascal}Repository {
   constructor() {
     /** @type {${EntityPascal}[]} */
-    this.items = [];
+    this.items = [...mock${EntityPascal}List];
   }
 
   /**

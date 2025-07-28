@@ -149,8 +149,6 @@ add_router_wrapper_block() {
   local block="$1"
   log "INFO" "Intentando insertar router wrapper..."
   log "INFO" "Bloque a insertar:"
-  echo "$block"
-  echo ""
 
   local inserted=false
   local patterns=(

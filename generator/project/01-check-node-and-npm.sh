@@ -1,5 +1,5 @@
 #!/bin/bash
-# 01-init-npm-and-install-deps.sh
+# generator/project/01-check-node-and-npm.sh
 
 set -e
 

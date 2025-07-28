@@ -1,148 +1,68 @@
 #!/bin/bash
-# hexagonizer/project/05-create-index-and-server.sh
-# shellcheck disable=SC1091
+# generator/project/07-create-html.sh
 
-# Obtener ruta absoluta al root del CLI (asumiendo que estamos en hexagonizer/project)
+# ========================
+# CONFIGURACIÓN INICIAL
+# ========================
+set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Importar confirm-action desde common
+# ========================
+# COLORES PARA OUTPUT
+# ========================
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
+fi
+
+# ========================
+# LOGGING FUNCTION
+# ========================
+log() {
+  local level="$1"
+  shift
+  local message="$*"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  case "$level" in
+  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
+  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
+  esac
+}
+
+# ========================
+# DEPENDENCIAS
+# ========================
 source "$PROJECT_ROOT/generator/common/confirm-action.sh"
 
-write_file_with_confirm() {
-  local filepath=$1
-  local content=$2
+# ========================
+# FUNCIONES PRINCIPALES
+# ========================
+create_public_directory() {
+  log "INFO" "Verificando/creando directorio src/public"
 
-  if [[ -f "$filepath" ]]; then
-    if [[ "$AUTO_YES" == true ]]; then
-      echo "⚠️  El archivo $filepath ya existe. Sobrescribiendo por opción -y."
-      echo "$content" >"$filepath"
-    else
-      if confirm_action "⚠️  El archivo $filepath ya existe. ¿Desea sobrescribirlo? (y/n): "; then
-        echo "$content" >"$filepath"
-      else
-        echo "❌ No se sobrescribió $filepath"
-        return 1
-      fi
-    fi
+  if mkdir -p src/public; then
+    log "SUCCESS" "Directorio src/public está disponible"
+    return 0
   else
-    echo "$content" >"$filepath"
+    log "ERROR" "Error al crear el directorio src/public"
+    return 1
   fi
 }
 
-mkdir -p src/public
+create_html_file() {
+  log "INFO" "Iniciando creación del archivo index.html"
 
-# 1) Generar server.js con serve estático y ruta /
-write_file_with_confirm "src/config/server.js" "$(
-  cat <<'EOF'
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Definir __dirname en ESModules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export class Server {
-  constructor({ routes = [], middlewares = [] } = {}) {
-    this.app = express();
-    this.routes = routes;
-    this.middlewares = middlewares;
-  }
-
-  setupMiddlewares() {
-    this.app.use(express.json());
-
-    // Servir archivos estáticos desde la carpeta 'src/public'
-    this.app.use(express.static(path.resolve(__dirname, '../public')));
-
-    this.middlewares.forEach((mw) => this.app.use(mw));
-  }
-
-  setupRoutes() {
-    this.routes.forEach(({ path: routePath, handler }) => {
-      this.app.use(routePath, handler);
-    });
-
-    // Ruta raíz para servir index.html explícitamente
-    this.app.get('/', (req, res) => {
-      res.sendFile(path.resolve(__dirname, '../public/index.html'));
-    });
-  }
-
-  start(port = 3000) {
-    this.setupMiddlewares();
-    this.setupRoutes();
-
-    this.app.listen(port, () => {
-      console.log(`🚀 Servidor iniciado en http://localhost:${port}`);
-    });
-  }
-
-  getApp() {
-    return this.app;
-  }
-}
-EOF
-)"
-
-# 2) Generar index.js
-write_file_with_confirm "src/index.js" "$(
-  cat <<'EOF'
-import { Server } from './config/server.js';
-
-import healthRoutes from './interfaces/http/health/health.routes.js';
-import publicRoutes from './interfaces/http/public/public.routes.js';
-
-// import entityRoutes from './interfaces/http/entity/entity.routes.js';
-
-import { wrapRouterWithFlexibleMiddlewares } from './utils/wrap-router-with-flexible-middlewares.js';
-// import { entityQueryConfig } from './interfaces/http/entity/query-entity-config.js';
-
-const excludePathsByMiddleware = {
-  // Por ahora sin exclusiones específicas
-};
-
-const routeMiddlewares = {};
-
-// Middlewares globales comunes (como helmet, cors, etc) pueden ir acá
-const globalMiddlewares = [];
-
-// Ejemplo de cómo inyectar middlewares de búsqueda en /entity
-// const entityRouterWithMiddlewares = wrapRouterWithFlexibleMiddlewares(entityRoutes, {
-//   globalMiddlewares: createQueryMiddlewares(entityQueryConfig),
-//   excludePathsByMiddleware,
-//   routeMiddlewares,
-// });
-
-const healthRouter = wrapRouterWithFlexibleMiddlewares(healthRoutes, {
-  globalMiddlewares,
-  excludePathsByMiddleware,
-  routeMiddlewares,
-});
-
-const publicRouter = wrapRouterWithFlexibleMiddlewares(publicRoutes, {
-  globalMiddlewares,
-  excludePathsByMiddleware,
-  routeMiddlewares,
-});
-
-const server = new Server({
-  middlewares: [],
-  routes: [
-    { path: '/health', handler: healthRouter },
-    { path: '/public', handler: publicRouter },
-    // { path: '/entity', handler: entityRouterWithMiddlewares },
-  ],
-});
-
-server.start(process.env.PORT || 3000);
-EOF
-)"
-
-# 3) Generar index.html completo en src/public
-write_file_with_confirm "src/public/index.html" "$(
-  cat <<'EOF'
+  local html_content
+  html_content="$(
+    cat <<'EOF'
 <!DOCTYPE html>
 <html lang="es">
 
@@ -580,88 +500,78 @@ write_file_with_confirm "src/public/index.html" "$(
 
 </html>
 EOF
-)"
+  )"
 
-# 2) Generar health.routes.js
-write_file_with_confirm "src/interfaces/http/health/health.routes.js" "$(
-  cat <<'EOF'
-import express from 'express';
-
-const router = express.Router();
-
-router.get('/', (req, res) => {
-  res.json({ status: 'ok', timestamp: Date.now() });
-});
-
-export default router;
-EOF
-)"
-
-# 2) Generar public.routes.js
-write_file_with_confirm "src/interfaces/http/public/public.routes.js" "$(
-  cat <<'EOF'
-import express from 'express';
-
-const router = express.Router();
-
-router.get('/info', (req, res) => {
-  res.json({ app: 'Hexagonizer', version: '1.0.0', description: 'Información pública' });
-});
-
-export default router;
-EOF
-)"
-
-# 2) Generar wrap-router-with-flexible-middlewares.js
-write_file_with_confirm "src/utils/wrap-router-with-flexible-middlewares.js" "$(
-  cat <<'EOF'
-import express from 'express';
-import { match } from 'path-to-regexp';
-
-export function wrapRouterWithFlexibleMiddlewares(router, options = {}) {
-  const {
-    globalMiddlewares = [],
-    excludePathsByMiddleware = {},
-    routeMiddlewares = {},
-  } = options;
-
-  const wrapped = express.Router();
-
-  globalMiddlewares.forEach((mw) => {
-    const mwName = mw.name || 'anonymous';
-
-    wrapped.use((req, res, next) => {
-      const excludes = excludePathsByMiddleware[mwName] || [];
-      if (excludes.some(path => match(path, { decode: decodeURIComponent })(req.path))) {
-        return next();
-      }
-      return mw(req, res, next);
-    });
-  });
-
-  wrapped.use((req, res, next) => {
-    for (const pattern in routeMiddlewares) {
-      const isMatch = match(pattern, { decode: decodeURIComponent })(req.path);
-      if (isMatch) {
-        const mws = routeMiddlewares[pattern];
-        if (!mws.length) return next();
-
-        let i = 0;
-        function run(i) {
-          if (i >= mws.length) return next();
-          mws[i](req, res, () => run(i + 1));
-        }
-        return run(0);
-      }
-    }
-    return next();
-  });
-
-  wrapped.use(router);
-
-  return wrapped;
+  if write_file_with_confirm "src/public/index.html" "$html_content"; then
+    log "SUCCESS" "Archivo src/public/index.html creado correctamente"
+    return 0
+  else
+    log "ERROR" "Error al crear el archivo src/public/index.html"
+    return 1
+  fi
 }
-EOF
-)"
 
-echo "✅ server.js, index.js, index.html, health.routes.js, publuc.routes.js y wrap-router-with-flexible-middlewares.js generados correctamente."
+validate_dependencies() {
+  log "INFO" "Validando dependencias necesarias"
+
+  if [[ ! -f "$PROJECT_ROOT/generator/common/confirm-action.sh" ]]; then
+    log "ERROR" "No se encontró el archivo confirm-action.sh"
+    return 1
+  fi
+
+  log "SUCCESS" "Todas las dependencias están disponibles"
+  return 0
+}
+
+validate_html_content() {
+  log "INFO" "Validando contenido HTML"
+
+  # Verificar si el placeholder MI_HTML necesita ser reemplazado
+  if [[ -f "src/public/index.html" ]]; then
+    if grep -q "MI_HTML" "src/public/index.html"; then
+      log "WARN" "El archivo contiene el placeholder 'MI_HTML' - considera reemplazarlo con contenido real"
+    fi
+  fi
+
+  log "SUCCESS" "Validación de contenido HTML completada"
+  return 0
+}
+
+# ========================
+# FUNCIÓN PRINCIPAL
+# ========================
+main() {
+  log "INFO" "=== Iniciando generación de archivo HTML ==="
+
+  if ! validate_dependencies; then
+    log "ERROR" "Falló la validación de dependencias"
+    exit 1
+  fi
+
+  if ! create_public_directory; then
+    log "ERROR" "Error al preparar el directorio público"
+    exit 1
+  fi
+
+  if ! create_html_file; then
+    log "ERROR" "Error al crear el archivo HTML"
+    exit 1
+  fi
+
+  validate_html_content
+
+  log "SUCCESS" "=== Generación de archivo HTML completada exitosamente ==="
+}
+
+# ========================
+# EXECUTION LOGIC
+# ========================
+# Si se llama directamente con bash
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
+
+# Si se hace source y hay condiciones específicas
+if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_HTML:-}" || $# -gt 0) ]]; then
+  main "$@"
+fi

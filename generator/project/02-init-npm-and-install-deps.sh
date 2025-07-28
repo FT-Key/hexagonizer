@@ -1,5 +1,5 @@
 #!/bin/bash
-# hexagonizer/project/01-init-npm-and-install-deps.sh
+# generator/project/02-init-npm-and-install-deps.sh
 
 set -e
 

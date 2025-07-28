@@ -1,5 +1,5 @@
 #!/bin/bash
-# hexagonizer/project/08-generate-database-config.sh
+# hexagonizer/project/12-generate-database-config.sh
 # shellcheck disable=SC1091
 
 # Obtener ruta absoluta al root del CLI (asumiendo que estamos en hexagonizer/project)

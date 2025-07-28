@@ -17,3 +17,24 @@ confirm_action() {
     esac
   done
 }
+
+write_file_with_confirm() {
+  local filepath=$1
+  local content=$2
+
+  if [[ -f "$filepath" ]]; then
+    if [[ "$AUTO_YES" == true ]]; then
+      echo "⚠️  El archivo $filepath ya existe. Sobrescribiendo por opción -y."
+      echo "$content" >"$filepath"
+    else
+      if confirm_action "⚠️  El archivo $filepath ya existe. ¿Desea sobrescribirlo? (y/n): "; then
+        echo "$content" >"$filepath"
+      else
+        echo "❌ No se sobrescribió $filepath"
+        return 1
+      fi
+    fi
+  else
+    echo "$content" >"$filepath"
+  fi
+}

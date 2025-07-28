@@ -1,5 +1,5 @@
 #!/bin/bash
-# 02-create-folders.sh
+# generator/project/03-create-folders.sh
 
 set -e
 

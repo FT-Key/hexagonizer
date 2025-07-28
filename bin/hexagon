@@ -7,25 +7,36 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Variables globales para manejo de procesos
 SERVER_PID=""
 DOCKER_COMPOSE_RUNNING=false
+SERVER_MODE=false # Nueva variable para controlar cuándo estamos en modo servidor
 
 # Función para manejar señales de interrupción
 cleanup() {
-  echo
-  echo -e "${YELLOW}🛑 Deteniendo servidor...${NC}"
+  # Solo actuar si estamos en modo servidor
+  if [ "$SERVER_MODE" = true ]; then
+    echo
+    echo -e "${YELLOW}🛑 Deteniendo servidor...${NC}"
 
-  if [ -n "$SERVER_PID" ]; then
-    kill -TERM "$SERVER_PID" 2>/dev/null
-    wait "$SERVER_PID" 2>/dev/null
-    SERVER_PID=""
+    if [ -n "$SERVER_PID" ]; then
+      kill -TERM "$SERVER_PID" 2>/dev/null
+      wait "$SERVER_PID" 2>/dev/null
+      SERVER_PID=""
+    fi
+
+    if [ "$DOCKER_COMPOSE_RUNNING" = true ]; then
+      echo -e "${CYAN}🐳 Deteniendo Docker Compose...${NC}"
+      docker-compose down 2>/dev/null
+      DOCKER_COMPOSE_RUNNING=false
+    fi
+
+    echo -e "${GREEN}✅ Servidor detenido correctamente${NC}"
+    SERVER_MODE=false
+  else
+    # Si no estamos en modo servidor, salir del programa
+    echo
+    echo -e "${GREEN}👋 ¡Gracias por usar Hexagonizer!${NC}"
+    echo -e "${CYAN}🚀 ¡Que tengas un excelente día desarrollando!${NC}"
+    exit 0
   fi
-
-  if [ "$DOCKER_COMPOSE_RUNNING" = true ]; then
-    echo -e "${CYAN}🐳 Deteniendo Docker Compose...${NC}"
-    docker-compose down 2>/dev/null
-    DOCKER_COMPOSE_RUNNING=false
-  fi
-
-  echo -e "${GREEN}✅ Servidor detenido correctamente${NC}"
 }
 
 # Configurar traps para manejo de señales
@@ -59,7 +70,7 @@ show_menu() {
   echo
   echo -e "${WHITE}1.${NC} ${GREEN}🧱 Inicializar proyecto${NC} ${YELLOW}(Setup inicial)${NC}"
   echo -e "${WHITE}2.${NC} ${BLUE}🧬 Generar nueva entidad${NC} ${YELLOW}(Modo interactivo)${NC}"
-  echo -e "${WHITE}3.${NC} ${PURPLE}🧬⚡ Generar entidad rápida${NC} ${YELLOW}(Auto-aprobar todo)${NC}"
+  echo -e "${WHITE}3.${NC} ${PURPLE}⚡ Generar entidad rápida${NC} ${YELLOW}(Auto-aprobar todo)${NC}"
   echo -e "${WHITE}4.${NC} ${CYAN}📄 Generar desde JSON${NC} ${YELLOW}(Configuración avanzada)${NC}"
   echo -e "${WHITE}5.${NC} ${GREEN}📄⚡ JSON + Auto-aprobar${NC} ${YELLOW}(Máxima velocidad)${NC}"
   echo -e "${WHITE}6.${NC} ${BLUE}🌐 Server de desarrollo${NC} ${YELLOW}(npm start/dev)${NC}"
@@ -304,6 +315,9 @@ run_server_command() {
     echo -e "${CYAN}🌐 Una vez iniciado, estará disponible en: ${BOLD}http://localhost:3000${NC}"
     echo
 
+    # Activar modo servidor para que Ctrl+C funcione correctamente
+    SERVER_MODE=true
+
     # Ejecutar comando en background y capturar PID
     eval "$cmd" &
     SERVER_PID=$!
@@ -312,6 +326,9 @@ run_server_command() {
     wait $SERVER_PID
     local exit_code=$?
     SERVER_PID=""
+
+    # Desactivar modo servidor
+    SERVER_MODE=false
 
     echo
     if [ $exit_code -eq 0 ]; then

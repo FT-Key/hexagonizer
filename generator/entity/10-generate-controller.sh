@@ -1,11 +1,40 @@
 #!/bin/bash
+# generator/entity/10-generate-controller.sh
 # shellcheck disable=SC2154
 # 4. CONTROLLER Generator
 
-# Función principal
+# ===================================
+# Colores para output
+# ===================================
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
+fi
+
+# ===================================
+# Logging
+# ===================================
+log() {
+  local level="$1"
+  shift
+  local message="$*"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  case "$level" in
+  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
+  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
+  esac
+}
+
 main() {
   if [[ -z "${entity:-}" || -z "${EntityPascal:-}" ]]; then
-    echo "❌ Error: Las variables 'entity' y 'EntityPascal' deben estar definidas"
+    log "ERROR" "Las variables 'entity' y 'EntityPascal' deben estar definidas"
     echo "Uso: $0 <entity> <EntityPascal>"
     echo "Ejemplo: $0 user User"
     return 1
@@ -18,17 +47,18 @@ generate_controller() {
   local controller_file="src/interfaces/http/$entity/${entity}.controller.js"
 
   mkdir -p "$(dirname "$controller_file")"
+  log "INFO" "📁 Directorio asegurado para controlador: $(dirname "$controller_file")"
 
   if [[ -f "$controller_file" && "$AUTO_CONFIRM" != true ]]; then
-    read -r -p "⚠️  El archivo $controller_file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
+    read -r -p "El archivo $controller_file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-      echo "⏭️  Controlador omitido: $controller_file"
+      log "WARN" "Controlador omitido: $controller_file"
       return 0
     fi
   fi
 
   create_controller_content "$controller_file"
-  echo "✅ Controlador generado: $controller_file"
+  log "SUCCESS" "Controlador generado: $controller_file"
 }
 
 create_controller_content() {

@@ -1,33 +1,56 @@
 #!/bin/bash
-# hexagonizer/entity/13-generate-query-middlewares-and-utils.sh
+# generator/entity/13-generate-query-middlewares-and-utils.sh
 # shellcheck disable=SC1091,SC2154
 set -e
 
-# Función principal
+# ===================================
+# Colores para output
+# ===================================
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
+fi
+
+# ===================================
+# Logging
+# ===================================
+log() {
+  local level="$1"
+  shift
+  local message="$*"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  case "$level" in
+  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
+  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
+  esac
+}
+
+# ===================================
+# Main
+# ===================================
 main() {
-  # Validar que las variables necesarias estén definidas
-  validate_required_variables
-
-  # Inicializar variables del proyecto
+  validate_required_variables || exit 1
   init_project_variables
-
-  # Generar middlewares y utils de query
   generate_query_components
 }
 
-# Función para validar variables requeridas
 validate_required_variables() {
   if [[ -z "${entity:-}" ]]; then
-    echo "❌ Error: La variable 'entity' es requerida"
+    log "ERROR" "La variable 'entity' es requerida"
     echo "Uso: $0 <entity>"
     echo "Ejemplo: $0 user"
     return 1
   fi
 }
 
-# Función para inicializar variables del proyecto
 init_project_variables() {
-  # Obtener ruta raíz del proyecto (asumiendo que este archivo está en hexagonizer/entity/)
   if [[ -z "${PROJECT_ROOT:-}" ]]; then
     PROJECT_ROOT="$(cd "$(dirname "$(dirname "$(dirname "${BASH_SOURCE[0]}")")")" && pwd)"
   fi
@@ -37,7 +60,6 @@ init_project_variables() {
   readonly UTILS_SCRIPT="$COMMON_DIR/generate-query-utils.sh"
 }
 
-# Función para validar que los scripts comunes existan
 validate_common_scripts() {
   local missing_scripts=()
 
@@ -50,36 +72,32 @@ validate_common_scripts() {
   fi
 
   if [[ ${#missing_scripts[@]} -gt 0 ]]; then
-    echo "❌ Error: No se encontraron los siguientes scripts:"
+    log "ERROR" "No se encontraron los siguientes scripts necesarios:"
     printf "  - %s\n" "${missing_scripts[@]}"
     return 1
   fi
 }
 
-# Función para generar componentes de query
 generate_query_components() {
-  echo "🔧 Generando middlewares y utils de query para la entidad: $entity"
+  log "INFO" "Generando middlewares y utils de query para la entidad: $entity"
 
-  # Validar que los scripts comunes existan
-  validate_common_scripts
+  validate_common_scripts || exit 1
 
-  # Incluir y ejecutar scripts desde common
-  echo "📦 Cargando script de middlewares..."
+  log "INFO" "Cargando script de middlewares..."
   source "$MIDDLEWARES_SCRIPT" || {
-    echo "❌ Error al cargar el script de middlewares"
-    return 1
+    log "ERROR" "Error al cargar el script de middlewares"
+    exit 1
   }
 
-  echo "📦 Cargando script de utils..."
+  log "INFO" "Cargando script de utils..."
   source "$UTILS_SCRIPT" || {
-    echo "❌ Error al cargar el script de utils"
-    return 1
+    log "ERROR" "Error al cargar el script de utils"
+    exit 1
   }
 
-  echo "✅ Query middlewares y utils generados correctamente"
+  log "SUCCESS" "Middlewares y utils de query generados correctamente"
 }
 
-# Función para mostrar información de debug
 show_debug_info() {
   if [[ "${DEBUG:-}" == "true" ]]; then
     cat <<EOF
@@ -92,7 +110,6 @@ EOF
   fi
 }
 
-# Manejo de argumentos si se ejecuta directamente
 parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -114,7 +131,6 @@ parse_arguments() {
   done
 }
 
-# Función de ayuda
 show_help() {
   cat <<EOF
 Uso: $0 [OPCIONES] <entity>
@@ -138,14 +154,15 @@ Ejemplo:
 EOF
 }
 
-# Ejecutar si se llama directamente
+# ===================================
+# Ejecución
+# ===================================
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   parse_arguments "$@"
   show_debug_info
   main "$@"
 fi
 
-# Llamada implícita si fue sourced desde otro script
 if [[ -n "${entity:-}" ]]; then
   main "$@"
 fi

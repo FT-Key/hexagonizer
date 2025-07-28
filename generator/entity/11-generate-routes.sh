@@ -1,12 +1,37 @@
 #!/bin/bash
+# generator/entity/11-generate-routes.sh
 # shellcheck disable=SC2154
 # 5. ROUTES Generator
 
-# Función principal
+# ========================
+# COLORES PARA OUTPUT
+# ========================
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
+fi
+
+log() {
+  local level="$1"
+  shift
+  local message="$*"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  case "$level" in
+  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
+  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
+  esac
+}
+
 main() {
-  # Validar que las variables necesarias estén definidas
   if [[ -z "${entity:-}" || -z "${EntityPascal:-}" ]]; then
-    echo "❌ Error: Las variables 'entity' y 'EntityPascal' deben estar definidas"
+    log "ERROR" "Las variables 'entity' y 'EntityPascal' deben estar definidas"
     echo "Uso: $0 <entity> <EntityPascal>"
     echo "Ejemplo: $0 user User"
     return 1
@@ -15,38 +40,32 @@ main() {
   generate_routes
 }
 
-# Función para generar las rutas
 generate_routes() {
   local routes_file="src/interfaces/http/$entity/${entity}.routes.js"
 
-  # Crear directorio si no existe
   mkdir -p "$(dirname "$routes_file")"
+  log "INFO" "📁 Directorio asegurado para rutas: $(dirname "$routes_file")"
 
-  # Verificar si ya existe y si debe sobrescribirse
   if ! should_overwrite_file "$routes_file"; then
-    echo "⏭️  Rutas omitidas: $routes_file"
+    log "WARN" "Rutas omitidas: $routes_file"
     return 0
   fi
 
-  # Generar el archivo de rutas
   create_routes_content "$routes_file"
-
-  echo "✅ Rutas generadas: $routes_file"
+  log "SUCCESS" "Rutas generadas: $routes_file"
 }
 
-# Función para verificar si se debe sobrescribir un archivo
 should_overwrite_file() {
   local file="$1"
 
   if [[ -f "$file" && "$AUTO_CONFIRM" != true ]]; then
-    read -r -p "⚠️  El archivo $file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
+    read -r -p "El archivo $file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
     [[ "$confirm" =~ ^[Yy]$ ]]
   else
     true
   fi
 }
 
-# Función para crear el contenido de las rutas
 create_routes_content() {
   local routes_file="$1"
 
@@ -77,7 +96,6 @@ export default router;
 EOF
 }
 
-# Manejo de argumentos si se ejecuta directamente
 parse_arguments() {
   if [[ $# -ge 2 ]]; then
     entity="$1"
@@ -85,13 +103,11 @@ parse_arguments() {
   fi
 }
 
-# Ejecutar si se llama directamente
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   parse_arguments "$@"
   main "$@"
 fi
 
-# Llamada implícita si fue sourced desde otro script
 if [[ -n "${entity:-}" && -n "${EntityPascal:-}" ]]; then
   main "$@"
 fi

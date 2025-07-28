@@ -3,14 +3,49 @@
 # shellcheck disable=SC2154
 set -e
 
+# ==========================================
+# COLORES Y FUNCIONES DE LOG (locales)
+# ==========================================
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
+fi
+
+log() {
+  local level="$1"
+  shift
+  local message="$*"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  case "$level" in
+  "INFO") printf "${BLUE}[INFO]${NC} %s: %s\n" "$timestamp" "$message" ;;
+  "WARN") printf "${YELLOW}[WARN]${NC} %s: %s\n" "$timestamp" "$message" ;;
+  "ERROR") printf "${RED}[ERROR]${NC} %s: %s\n" "$timestamp" "$message" >&2 ;;
+  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s: %s\n" "$timestamp" "$message" ;;
+  esac
+}
+
+# ==========================================
+# RUTA Y ARCHIVO DE DESTINO
+# ==========================================
 DOMAIN_PATH="src/domain/$entity"
 domain_file="$DOMAIN_PATH/${entity}.js"
 
+# ==========================================
+# FUNCIONES DE GENERACIÓN
+# ==========================================
+
 setup_domain_directory() {
+  log "INFO" "📁 Creando carpeta: $DOMAIN_PATH"
   mkdir -p "$DOMAIN_PATH"
 }
 
 extract_field_data() {
+  log "INFO" "📦 Procesando campos definidos en el esquema"
   eval "$(echo "$PARSED_FIELDS" | node -e "
     const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
     const { fields, methods } = input;
@@ -68,7 +103,6 @@ build_accessors() {
     tojson_lines+=("      $name: this._$name,")
   done
 
-  # Remove trailing comma from last toJSON field
   [[ ${#tojson_lines[@]} -gt 0 ]] && tojson_lines[-1]="${tojson_lines[-1]%,}"
 }
 
@@ -90,15 +124,17 @@ build_methods() {
 
 confirm_file_overwrite() {
   if [[ -f "$domain_file" && "$AUTO_CONFIRM" != true ]]; then
-    read -r -p "⚠️  El archivo $domain_file ya existe. ¿Desea sobrescribirlo? [y/n]: " confirm
-    [[ ! "$confirm" =~ ^[Yy]$ ]] && {
-      echo "⏭️  Se omitió la escritura de $domain_file"
+    printf "${YELLOW}⚠️  El archivo %s ya existe. ¿Desea sobrescribirlo? [s/N]: ${NC}" "$domain_file"
+    read -r confirm
+    if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
+      log "INFO" "⏭️  Clase omitida: $domain_file"
       exit 0
-    }
+    fi
   fi
 }
 
 write_domain_class() {
+  log "INFO" "📝 Escribiendo clase de dominio en: $domain_file"
   cat >"$domain_file" <<EOF
 export class $EntityPascal {
   /**
@@ -135,7 +171,15 @@ $(printf '%s\n' "${tojson_lines[@]}")
 EOF
 }
 
-# Main execution
+# ==========================================
+# EJECUCIÓN
+# ==========================================
+
+log "INFO" "=== GENERADOR DE DOMINIO ==="
+log "INFO" "Entidad: $entity ($EntityPascal)"
+log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
+echo ""
+
 setup_domain_directory
 extract_field_data
 build_constructor
@@ -144,4 +188,4 @@ build_methods
 confirm_file_overwrite
 write_domain_class
 
-echo "✅ Clase generada: $domain_file"
+log "SUCCESS" "✅ Clase generada: $domain_file"

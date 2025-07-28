@@ -1,4 +1,5 @@
 #!/bin/bash
+# generator/entity/08-generate-usecases.sh
 # shellcheck disable=SC2154
 set -euo pipefail
 
@@ -13,12 +14,14 @@ fi
 readonly USE_CASES_BASE_PATH="src/application"
 readonly DOMAIN_BASE_PATH="src/domain"
 
-# Colores para output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly NC='\033[0m' # No Color
+# Colores para output (definir solo si no están definidos)
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
+fi
 
 # ==========================================
 # FUNCIONES DE UTILIDAD

@@ -1,4 +1,5 @@
 #!/bin/bash
+# generator/entity/09-generate-services.sh
 # shellcheck disable=SC2154
 set -euo pipefail
 

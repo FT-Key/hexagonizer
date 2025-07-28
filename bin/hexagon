@@ -475,7 +475,7 @@ read_option() {
   case "$choice" in
   1)
     echo -e "${GREEN}🧱 Inicializando proyecto...${NC}"
-    bash "$DIR/scripts/init-project.sh"
+    bash "$DIR/scripts/init-project.sh" -y
     ;;
   2)
     echo -e "${BLUE}🧬 Generador interactivo de entidades...${NC}"

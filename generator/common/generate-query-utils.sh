@@ -6,11 +6,11 @@ QUERY_UTILS_FILE="$UTILS_PATH/query-utils.js"
 
 mkdir -p "$UTILS_PATH"
 
-AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
+AUTO_YES="${AUTO_YES:-false}"
 
 confirm_action() {
   local prompt=$1
-  if [ "$AUTO_CONFIRM" = true ]; then
+  if [ "$AUTO_YES" = true ]; then
     return 0
   fi
 

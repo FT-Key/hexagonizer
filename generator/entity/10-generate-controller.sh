@@ -1,21 +1,70 @@
 #!/bin/bash
+# generator/entity/10-generate-controller.sh
 # shellcheck disable=SC2154
-# 4. CONTROLLER
+# 4. CONTROLLER Generator
 
-controller_file="src/interfaces/http/$entity/${entity}.controller.js"
-mkdir -p "$(dirname "$controller_file")"
-
-# Preguntar si ya existe, excepto si -y
-if [[ -f "$controller_file" && "$AUTO_CONFIRM" != true ]]; then
-  read -r -p "⚠️  El archivo $controller_file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "⏭️  Controlador omitido: $controller_file"
-    exit 0
-  fi
+# ===================================
+# Colores para output
+# ===================================
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
 fi
 
-# Generar el archivo
-cat <<EOF >"$controller_file"
+# ===================================
+# Logging
+# ===================================
+log() {
+  local level="$1"
+  shift
+  local message="$*"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  case "$level" in
+  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
+  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
+  esac
+}
+
+main() {
+  if [[ -z "${entity:-}" || -z "${EntityPascal:-}" ]]; then
+    log "ERROR" "Las variables 'entity' y 'EntityPascal' deben estar definidas"
+    echo "Uso: $0 <entity> <EntityPascal>"
+    echo "Ejemplo: $0 user User"
+    return 1
+  fi
+
+  generate_controller
+}
+
+generate_controller() {
+  local controller_file="src/interfaces/http/$entity/${entity}.controller.js"
+
+  mkdir -p "$(dirname "$controller_file")"
+  log "INFO" "📁 Directorio asegurado para controlador: $(dirname "$controller_file")"
+
+  if [[ -f "$controller_file" && "$AUTO_CONFIRM" != true ]]; then
+    read -r -p "El archivo $controller_file ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+      log "WARN" "Controlador omitido: $controller_file"
+      return 0
+    fi
+  fi
+
+  create_controller_content "$controller_file"
+  log "SUCCESS" "Controlador generado: $controller_file"
+}
+
+create_controller_content() {
+  local controller_file="$1"
+
+  cat <<EOF >"$controller_file"
 import { InMemory${EntityPascal}Repository } from '../../../infrastructure/$entity/in-memory-$entity-repository.js';
 
 import { Create${EntityPascal} } from '../../../application/$entity/use-cases/create-$entity.js';
@@ -43,6 +92,7 @@ export const get${EntityPascal}Controller = async (req, res) => {
 export const update${EntityPascal}Controller = async (req, res) => {
   const useCase = new Update${EntityPascal}(repository);
   const item = await useCase.execute(req.params.id, req.body);
+  if (!item) return res.status(404).json({ error: '${EntityPascal} not found' });
   res.json(item);
 };
 
@@ -55,19 +105,42 @@ export const delete${EntityPascal}Controller = async (req, res) => {
 export const deactivate${EntityPascal}Controller = async (req, res) => {
   const useCase = new Deactivate${EntityPascal}(repository);
   const item = await useCase.execute(req.params.id);
+  if (!item) return res.status(404).json({ error: '${EntityPascal} not found' });
   res.json(item);
 };
 
 export const list${EntityPascal}sController = async (req, res) => {
-  const useCase = new List${EntityPascal}s(repository);
-  const items = await useCase.execute({
-    filters: req.filters,
-    search: req.search,
-    pagination: req.pagination,
-    sort: req.sort,
-  });
-  res.json(items);
+  try {
+    const useCase = new List${EntityPascal}s(repository);
+    const { filters, search, pagination, sort } = req;
+
+    const { data, meta } = await useCase.execute({
+      filters,
+      search,
+      pagination,
+      sort,
+    });
+
+    res.status(200).json({ data, meta });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 EOF
+}
 
-echo "✅ Controlador generado: $controller_file"
+parse_arguments() {
+  if [[ $# -ge 2 ]]; then
+    entity="$1"
+    EntityPascal="$2"
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  parse_arguments "$@"
+  main "$@"
+fi
+
+if [[ -n "${entity:-}" && -n "${EntityPascal:-}" ]]; then
+  main "$@"
+fi

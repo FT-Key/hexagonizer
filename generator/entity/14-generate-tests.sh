@@ -3,80 +3,128 @@
 # shellcheck disable=SC2154,SC2086
 set -e
 
-AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
-
-TEST_PATH="tests/application/$entity"
-mkdir -p "$TEST_PATH"
-
-# Validar que FIELDS venga desde load-schema
-if [[ -z "$FIELDS" ]]; then
-  echo "❌ No se encontraron campos en \$FIELDS para generate-tests"
-  exit 1
+# ===================================
+# Colores para output
+# ===================================
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
 fi
 
-# Extraer campos con Node
-# Extraer campos con Node
-FIELDS_JS=$(node -e "
-  try {
-    const { fields } = JSON.parse(process.env.FIELDS);
-    if (!Array.isArray(fields) || fields.length === 0) {
-      throw new Error('No se encontraron campos en el esquema');
+# ===================================
+# Logging
+# ===================================
+log() {
+  local level="$1"
+  shift
+  local message="$*"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  case "$level" in
+  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
+  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
+  esac
+}
+
+readonly AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
+
+validate_environment() {
+  if [[ -z "$PARSED_FIELDS" ]]; then
+    log "ERROR" "No se encontraron campos en \$PARSED_FIELDS para generate-tests"
+    exit 1
+  fi
+
+  if [[ -z "${entity:-}" ]]; then
+    log "ERROR" "Variable 'entity' no definida"
+    exit 1
+  fi
+
+  if [[ -z "${EntityPascal:-}" ]]; then
+    log "ERROR" "Variable 'EntityPascal' no definida"
+    exit 1
+  fi
+}
+
+parse_fields() {
+  log "INFO" "Parseando campos desde PARSED_FIELDS..."
+  local fields_js
+  fields_js=$(node -e "
+    try {
+      const { fields } = JSON.parse(process.env.PARSED_FIELDS);
+      if (!Array.isArray(fields) || fields.length === 0) {
+        throw new Error('No se encontraron campos en el esquema');
+      }
+      fields.forEach((f, i) => {
+        const dummy = String(f.dummy || '').replace(/\"/g, '');
+        const updated = String(f.updated || '').replace(/\"/g, '');
+        console.log('test_names[' + i + ']=\"' + f.name + '\"');
+        console.log('test_dummy[' + i + ']=\"' + dummy + '\"');
+        console.log('test_updated[' + i + ']=\"' + updated + '\"');
+      });
+    } catch (e) {
+      console.error('❌ Error al parsear FIELDS en generate-tests:', e.message);
+      process.exit(1);
     }
-    fields.forEach((f, i) => {
-      const dummy = String(f.dummy || '').replace(/\"/g, '');
-      const updated = String(f.updated || '').replace(/\"/g, '');
-      console.log('test_names[' + i + ']=\"' + f.name + '\"');
-      console.log('test_dummy[' + i + ']=\"' + dummy + '\"');
-      console.log('test_updated[' + i + ']=\"' + updated + '\"');
-    });
-  } catch (e) {
-    console.error('❌ Error al parsear FIELDS en generate-tests:', e.message);
-    process.exit(1);
-  }
-" FIELDS="$FIELDS")
+  " PARSED_FIELDS="$PARSED_FIELDS")
 
-eval "$FIELDS_JS"
+  eval "$fields_js"
+  log "SUCCESS" "Campos parseados correctamente"
+}
 
-# Crear input base y asserts
-input_entries=""
-factory_asserts=""
-create_asserts=""
-update_entries=""
-update_asserts=""
+build_test_data() {
+  log "INFO" "Construyendo datos de test..."
+  input_entries=""
+  factory_asserts=""
+  create_asserts=""
+  update_entries=""
+  update_asserts=""
 
-for i in "${!test_names[@]}"; do
-  name="${test_names[$i]}"
-  dummy="${test_dummy[$i]}"
-  updated="${test_updated[$i]}"
+  for i in "${!test_names[@]}"; do
+    local name="${test_names[$i]}"
+    local dummy="${test_dummy[$i]}"
+    local updated="${test_updated[$i]}"
 
-  input_entries+="    $name: $dummy,\n"
-  factory_asserts+="  assert.strictEqual(entity.$name, data.$name);\n"
-  create_asserts+="  assert.strictEqual(entity.$name, input.$name);\n"
-  update_entries+="    $name: $updated,\n"
-  update_asserts+="  assert.strictEqual(updated.$name, updateInput.$name);\n"
-done
+    input_entries+="    $name: $dummy,\n"
+    factory_asserts+="  assert.strictEqual(entity.$name, data.$name);\n"
+    create_asserts+="  assert.strictEqual(entity.$name, input.$name);\n"
+    update_entries+="    $name: $updated,\n"
+    update_asserts+="  assert.strictEqual(updated.$name, updateInput.$name);\n"
+  done
 
-input_entries=$(echo -e "$input_entries" | sed '$s/,\n$//')
-update_entries=$(echo -e "$update_entries" | sed '$s/,\n$//')
+  input_entries=$(echo -e "$input_entries" | sed '$s/,\n$//')
+  update_entries=$(echo -e "$update_entries" | sed '$s/,\n$//')
+
+  log "SUCCESS" "Datos de test construidos correctamente"
+}
 
 create_test_file() {
   local file_path="$1"
   shift
+
   if [[ -f "$file_path" ]]; then
-    if [[ "$AUTO_CONFIRM" = true ]]; then
-      :
-    else
+    if [[ "$AUTO_CONFIRM" != true ]]; then
       read -rp "❗ El archivo $file_path ya existe. ¿Sobrescribir? (y/n): " confirm
-      [[ "$confirm" != "y" && "$confirm" != "Y" ]] && return
+      if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        log "INFO" "Archivo omitido: $file_path"
+        return 0
+      fi
     fi
   fi
+
   cat >"$file_path" <<<"$*"
-  echo "✅ Test generado: $file_path"
+  log "SUCCESS" "Test generado: $file_path"
 }
 
-# CREATE + FACTORY
-create_test_file "$TEST_PATH/create-$entity.test.js" "$(
-  cat <<EOF
+generate_create_test() {
+  local test_path="$1"
+  create_test_file "$test_path/create-$entity.test.js" "$(
+    cat <<EOF
 import assert from 'assert';
 import { $EntityPascal } from '../../../src/domain/$entity/${entity}.js';
 import { InMemory${EntityPascal}Repository } from '../../../src/infrastructure/$entity/in-memory-${entity}-repository.js';
@@ -131,11 +179,13 @@ testCreate${EntityPascal}().catch(err => {
   process.exit(1);
 });
 EOF
-)"
+  )"
+}
 
-# GET
-create_test_file "$TEST_PATH/get-$entity.test.js" "$(
-  cat <<EOF
+generate_get_test() {
+  local test_path="$1"
+  create_test_file "$test_path/get-$entity.test.js" "$(
+    cat <<EOF
 import assert from 'assert';
 import { InMemory${EntityPascal}Repository } from '../../../src/infrastructure/$entity/in-memory-${entity}-repository.js';
 import { Create$EntityPascal } from '../../../src/application/$entity/use-cases/create-$entity.js';
@@ -162,11 +212,13 @@ testGet${EntityPascal}().catch(err => {
   process.exit(1);
 });
 EOF
-)"
+  )"
+}
 
-# UPDATE
-create_test_file "$TEST_PATH/update-$entity.test.js" "$(
-  cat <<EOF
+generate_update_test() {
+  local test_path="$1"
+  create_test_file "$test_path/update-$entity.test.js" "$(
+    cat <<EOF
 import assert from 'assert';
 import { InMemory${EntityPascal}Repository } from '../../../src/infrastructure/$entity/in-memory-${entity}-repository.js';
 import { Create$EntityPascal } from '../../../src/application/$entity/use-cases/create-$entity.js';
@@ -198,11 +250,13 @@ testUpdate${EntityPascal}().catch(err => {
   process.exit(1);
 });
 EOF
-)"
+  )"
+}
 
-# DELETE
-create_test_file "$TEST_PATH/delete-$entity.test.js" "$(
-  cat <<EOF
+generate_delete_test() {
+  local test_path="$1"
+  create_test_file "$test_path/delete-$entity.test.js" "$(
+    cat <<EOF
 import assert from 'assert';
 import { InMemory${EntityPascal}Repository } from '../../../src/infrastructure/$entity/in-memory-${entity}-repository.js';
 import { Create$EntityPascal } from '../../../src/application/$entity/use-cases/create-$entity.js';
@@ -234,11 +288,13 @@ testDelete${EntityPascal}().catch(err => {
   process.exit(1);
 });
 EOF
-)"
+  )"
+}
 
-# DEACTIVATE
-create_test_file "$TEST_PATH/deactivate-$entity.test.js" "$(
-  cat <<EOF
+generate_deactivate_test() {
+  local test_path="$1"
+  create_test_file "$test_path/deactivate-$entity.test.js" "$(
+    cat <<EOF
 import assert from 'assert';
 import { InMemory${EntityPascal}Repository } from '../../../src/infrastructure/$entity/in-memory-${entity}-repository.js';
 import { Create$EntityPascal } from '../../../src/application/$entity/use-cases/create-$entity.js';
@@ -272,6 +328,34 @@ testDeactivate${EntityPascal}().catch(err => {
   process.exit(1);
 });
 EOF
-)"
+  )"
+}
 
-echo "✅ Tests generados: $TEST_PATH"
+main() {
+  log "INFO" "Iniciando generación de tests para la entidad: $entity"
+
+  validate_environment
+
+  local test_path="tests/application/$entity"
+  mkdir -p "$test_path"
+
+  parse_fields
+  build_test_data
+
+  log "INFO" "Generando archivos de test..."
+  generate_create_test "$test_path"
+  generate_get_test "$test_path"
+  generate_update_test "$test_path"
+  generate_delete_test "$test_path"
+  generate_deactivate_test "$test_path"
+
+  log "SUCCESS" "Tests generados exitosamente en: $test_path"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
+
+if [[ -n "${entity:-}" && -n "${EntityPascal:-}" ]]; then
+  main "$@"
+fi

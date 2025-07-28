@@ -1,5 +1,5 @@
 #!/bin/bash
-# 00-parse-args.sh
+# generator/project/00-parse-args.sh
 
 set -e
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# hexagonizer/project/09-setup-docker.sh
+# hexagonizer/project/13-setup-docker.sh
 # shellcheck disable=SC1091
 
 # Obtener ruta absoluta al root del CLI (asumiendo que estamos en hexagonizer/project)

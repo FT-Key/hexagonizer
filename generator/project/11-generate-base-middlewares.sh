@@ -1,4 +1,5 @@
 #!/bin/bash
+# generator/project/10-generate-base-middlewares.sh
 # shellcheck disable=SC1091
 
 if [ "$CREATE_MIDDLEWARES" != "true" ]; then

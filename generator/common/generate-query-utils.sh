@@ -6,11 +6,13 @@ QUERY_UTILS_FILE="$UTILS_PATH/query-utils.js"
 
 mkdir -p "$UTILS_PATH"
 
-AUTO_YES="${AUTO_YES:-false}"
+# Aceptar cualquiera de las dos variables para confirmación automática
+AUTO_CONFIRM="${AUTO_CONFIRM:-$AUTO_YES}"
+AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
 
 confirm_action() {
   local prompt=$1
-  if [ "$AUTO_YES" = true ]; then
+  if [ "$AUTO_CONFIRM" = true ]; then
     return 0
   fi
 

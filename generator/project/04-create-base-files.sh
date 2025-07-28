@@ -1,5 +1,5 @@
 #!/bin/bash
-# 03-create-base-files.sh
+# generator/project/04-create-base-files.sh
 
 set -e
 

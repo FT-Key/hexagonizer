@@ -3,7 +3,11 @@
 
 confirm_action() {
   local prompt="$1"
-  if [ "$AUTO_YES" = true ]; then
+
+  # Permitir AUTO_YES o AUTO_CONFIRM (prioridad a AUTO_YES)
+  local auto_value="${AUTO_YES:-$AUTO_CONFIRM}"
+
+  if [ "$auto_value" = true ]; then
     echo "✔️ Auto confirmación activada, se asume Sí para: $prompt"
     return 0
   fi

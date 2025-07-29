@@ -1,30 +1,87 @@
 #!/bin/bash
 # hexagonizer/common/generate-query-utils.sh
 
-UTILS_PATH="src/utils"
-QUERY_UTILS_FILE="$UTILS_PATH/query-utils.js"
+set -e
 
-mkdir -p "$UTILS_PATH"
+# ========================
+# COLORES PARA OUTPUT
+# ========================
+if [[ -z "${RED:-}" ]]; then
+  readonly RED='\033[0;31m'
+  readonly GREEN='\033[0;32m'
+  readonly YELLOW='\033[1;33m'
+  readonly BLUE='\033[0;34m'
+  readonly NC='\033[0m' # No Color
+fi
+
+# ========================
+# LOGGING FUNCTION
+# ========================
+log() {
+  local level="$1"
+  shift
+  local message="$*"
+  local timestamp
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+  case "$level" in
+  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
+  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
+  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
+  esac
+}
+
+# ========================
+# CONFIGURATION
+# ========================
+readonly UTILS_PATH="src/utils"
+readonly QUERY_UTILS_FILE="$UTILS_PATH/query-utils.js"
 
 # Aceptar cualquiera de las dos variables para confirmación automática
-AUTO_CONFIRM="${AUTO_CONFIRM:-$AUTO_YES}"
-AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
+readonly AUTO_CONFIRM="${AUTO_CONFIRM:-${AUTO_YES:-false}}"
 
+# ========================
+# UTILITY FUNCTIONS
+# ========================
+
+# Función para solicitar confirmación al usuario
 confirm_action() {
-  local prompt=$1
-  if [ "$AUTO_CONFIRM" = true ]; then
+  local prompt="$1"
+
+  if [[ "$AUTO_CONFIRM" == "true" ]]; then
+    log "INFO" "Auto-confirmación activada, continuando..."
     return 0
   fi
 
   read -rp "$prompt [y/n]: " response
   case "$response" in
-  [yY][eE][sS] | [yY]) return 0 ;;
-  *) return 1 ;;
+  [yY][eE][sS] | [yY])
+    return 0
+    ;;
+  *)
+    return 1
+    ;;
   esac
 }
 
-create_query_utils() {
-  cat <<'EOF' >"$QUERY_UTILS_FILE"
+# Función para verificar si un directorio existe
+directory_exists() {
+  [[ -d "$1" ]]
+}
+
+# Función para verificar si un archivo existe
+file_exists() {
+  [[ -f "$1" ]]
+}
+
+# ========================
+# CONTENT GENERATOR
+# ========================
+
+# Generar contenido del archivo query-utils.js
+generate_query_utils_content() {
+  cat <<'EOF'
 // src/utils/query-utils.js
 
 /**
@@ -113,16 +170,106 @@ export function applyPagination(items, pagination = null) {
 EOF
 }
 
-# Crear o preguntar si sobrescribir
-if [ -f "$QUERY_UTILS_FILE" ]; then
-  echo "⚠️  $QUERY_UTILS_FILE ya existe."
-  if confirm_action "¿Deseás sobrescribirlo?"; then
-    create_query_utils
-    echo "✅ $QUERY_UTILS_FILE sobrescrito."
+# ========================
+# FILE OPERATIONS
+# ========================
+
+# Crear directorio utils si no existe
+create_utils_directory() {
+  log "INFO" "Verificando directorio utils..."
+
+  if ! directory_exists "$UTILS_PATH"; then
+    log "INFO" "Creando directorio $UTILS_PATH..."
+    if mkdir -p "$UTILS_PATH"; then
+      log "SUCCESS" "Directorio $UTILS_PATH creado"
+    else
+      log "ERROR" "Error creando directorio $UTILS_PATH"
+      return 1
+    fi
   else
-    echo "❌ No se sobrescribió $QUERY_UTILS_FILE."
+    log "INFO" "Directorio $UTILS_PATH ya existe"
   fi
-else
-  create_query_utils
-  echo "✅ $QUERY_UTILS_FILE creado."
+}
+
+# Crear archivo query-utils.js
+create_query_utils_file() {
+  local content
+  content=$(generate_query_utils_content)
+
+  if echo "$content" >"$QUERY_UTILS_FILE"; then
+    log "SUCCESS" "query-utils.js creado correctamente"
+    return 0
+  else
+    log "ERROR" "Error creando query-utils.js"
+    return 1
+  fi
+}
+
+# Manejar archivo existente
+handle_existing_file() {
+  log "WARN" "query-utils.js ya existe"
+
+  if confirm_action "¿Deseas sobrescribirlo?"; then
+    log "INFO" "Sobrescribiendo query-utils.js..."
+    if create_query_utils_file; then
+      log "SUCCESS" "query-utils.js sobrescrito exitosamente"
+      return 0
+    else
+      return 1
+    fi
+  else
+    log "INFO" "No se sobrescribió query-utils.js"
+    return 1
+  fi
+}
+
+# Crear archivo nuevo
+handle_new_file() {
+  log "INFO" "Creando nuevo archivo query-utils.js..."
+  if create_query_utils_file; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# ========================
+# MAIN FUNCTION
+# ========================
+main() {
+  log "INFO" "Iniciando generación de query-utils..."
+
+  # Crear directorio si no existe
+  if ! create_utils_directory; then
+    log "ERROR" "Error en la creación del directorio"
+    return 1
+  fi
+
+  # Verificar si el archivo existe y manejarlo apropiadamente
+  if file_exists "$QUERY_UTILS_FILE"; then
+    if ! handle_existing_file; then
+      log "INFO" "Operación cancelada o falló"
+      return 0
+    fi
+  else
+    if ! handle_new_file; then
+      log "ERROR" "Error creando el archivo"
+      return 1
+    fi
+  fi
+
+  log "SUCCESS" "Generación de query-utils completada exitosamente"
+}
+
+# ========================
+# EXECUTION LOGIC
+# ========================
+# Si se llama directamente con bash
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
+
+# Si se hace source y hay condiciones específicas
+if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_QUERY_UTILS:-}" || $# -gt 0) ]]; then
+  main "$@"
 fi

@@ -32,7 +32,9 @@ log() {
   esac
 }
 
-readonly AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
+if [[ -z "${AUTO_CONFIRM+x}" ]]; then
+  readonly AUTO_CONFIRM=false
+fi
 
 validate_environment() {
   if [[ -z "$PARSED_FIELDS" ]]; then

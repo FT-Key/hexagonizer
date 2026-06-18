@@ -5,38 +5,15 @@
 
 set -euo pipefail
 
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
+
 # =============================================================================
 # CONFIGURACIÓN
 # =============================================================================
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly INFRA_DIR="src/infrastructure"
 created_files=()
-
-# =============================================================================
-# COLORES Y LOGGING
-# =============================================================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - ✅ %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
-  esac
-}
 
 # =============================================================================
 # VALIDACIONES
@@ -56,28 +33,10 @@ validate_entity() {
 # =============================================================================
 # ARCHIVOS Y DIRECTORIOS
 # =============================================================================
-write_file_with_confirm() {
-  local filepath="$1"
-  local content="$2"
-
-  if [[ -f "$filepath" && "${AUTO_CONFIRM:-false}" != "true" ]]; then
-    read -r -p "⚠️  El archivo $filepath ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-      log "INFO" "Archivo omitido: $filepath"
-      return 1
-    fi
-  fi
-
-  echo "$content" >"$filepath"
-  created_files+=("$filepath")
-  return 0
-}
-
 create_directory_structure() {
   local entity_dir="$INFRA_DIR/$entity"
 
-  if ! mkdir -p "$entity_dir"; then
-    log "ERROR" "No se pudo crear el directorio: $entity_dir"
+  if ! ensure_directory "$entity_dir"; then
     exit 1
   fi
 
@@ -231,13 +190,13 @@ generate_repositories() {
   local database_file="$INFRA_DIR/$entity/database-${entity}-repository.js"
 
   log "INFO" "Generando repositorio en memoria..."
-  if write_file_with_confirm "$in_memory_file" "$(generate_in_memory_repository)"; then
-    log "SUCCESS" "Repositorio en memoria generado correctamente: $in_memory_file"
+  if write_file "$(generate_in_memory_repository)" "$in_memory_file"; then
+    created_files+=("$in_memory_file")
   fi
 
   log "INFO" "Generando repositorio de base de datos..."
-  if write_file_with_confirm "$database_file" "$(generate_database_repository)"; then
-    log "SUCCESS" "Repositorio de base de datos generado correctamente: $database_file"
+  if write_file "$(generate_database_repository)" "$database_file"; then
+    created_files+=("$database_file")
   fi
 }
 

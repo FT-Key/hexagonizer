@@ -1,5 +1,5 @@
 #!/bin/bash
-# generator/project/09-create-public-routes.sh
+# generator/project/08-create-health-routes.sh
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,24 +9,24 @@ source "$SCRIPT_DIR/../common/logging.sh"
 source "$PROJECT_ROOT/generator/common/confirm-action.sh"
 
 main() {
-  write_file_with_confirm "src/interfaces/http/public/public.routes.js" \
+  write_file_with_confirm "src/interfaces/http/health/health.routes.js" \
 'import express from "express";
 
 const router = express.Router();
 
 router.get("/", (req, res) => {
-  res.json({ message: "Bienvenido a la API pública" });
+  res.json({ status: "ok", timestamp: Date.now() });
 });
 
 export default router;
 '
-  log "SUCCESS" "Rutas públicas creadas"
+  log "SUCCESS" "Rutas de health creadas"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
 
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_PUBLIC_ROUTES:-}" || $# -gt 0) ]]; then
+if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_HEALTH_ROUTES:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

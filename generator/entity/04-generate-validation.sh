@@ -3,52 +3,12 @@
 # shellcheck disable=SC2154
 set -e
 
-# ==========================================
-# COLORES Y LOGGING (inline, no modularizado aún)
-# ==========================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC} %s: %s\n" "$timestamp" "$message" >&2 ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  esac
-}
-
-confirm_overwrite() {
-  local file_path="$1"
-  local file_type="${2:-archivo}"
-  local auto_confirm="${AUTO_CONFIRM:-false}"
-
-  if [[ -e "$file_path" && "$auto_confirm" != "true" ]]; then
-    printf "${YELLOW}⚠️  El %s %s ya existe. ¿Deseas sobrescribirlo? [s/N]: ${NC}" "$file_type" "$file_path"
-    read -r confirm
-    if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
-      log "INFO" "⏭️  Omitido: $file_path"
-      return 1
-    fi
-  fi
-  return 0
-}
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
 
 # ==========================================
 # GENERADOR DE VALIDACIÓN
 # ==========================================
-
 validate_file="src/domain/$entity/validate-$entity.js"
 
 extract_validation_data() {

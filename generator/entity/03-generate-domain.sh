@@ -3,31 +3,8 @@
 # shellcheck disable=SC2154
 set -e
 
-# ==========================================
-# COLORES Y FUNCIONES DE LOG (locales)
-# ==========================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC} %s: %s\n" "$timestamp" "$message" >&2 ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  esac
-}
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
 
 # ==========================================
 # RUTA Y ARCHIVO DE DESTINO
@@ -122,17 +99,6 @@ build_methods() {
   fi
 }
 
-confirm_file_overwrite() {
-  if [[ -f "$domain_file" && "$AUTO_CONFIRM" != true ]]; then
-    printf "${YELLOW}⚠️  El archivo %s ya existe. ¿Desea sobrescribirlo? [s/N]: ${NC}" "$domain_file"
-    read -r confirm
-    if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
-      log "INFO" "⏭️  Clase omitida: $domain_file"
-      exit 0
-    fi
-  fi
-}
-
 write_domain_class() {
   log "INFO" "📝 Escribiendo clase de dominio en: $domain_file"
   cat >"$domain_file" <<EOF
@@ -185,7 +151,8 @@ extract_field_data
 build_constructor
 build_accessors
 build_methods
-confirm_file_overwrite
-write_domain_class
+if confirm_overwrite "$domain_file" "clase de dominio"; then
+  write_domain_class
+fi
 
 log "SUCCESS" "✅ Clase generada: $domain_file"

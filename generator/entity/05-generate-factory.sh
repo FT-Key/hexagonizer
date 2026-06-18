@@ -3,48 +3,14 @@
 # shellcheck disable=SC2154
 set -e
 
-# ==========================================
-# COLORES Y LOGGING (locales al archivo)
-# ==========================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC} %s: %s\n" "$timestamp" "$message" >&2 ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  esac
-}
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
 
 # ==========================================
 # GENERACIÓN DE FACTORY
 # ==========================================
 
 factory_file="src/domain/$entity/${entity}-factory.js"
-
-confirm_file_overwrite() {
-  if [[ -f "$factory_file" && "$AUTO_CONFIRM" != true ]]; then
-    printf "${YELLOW}⚠️  El archivo %s ya existe. ¿Desea sobrescribirlo? [s/N]: ${NC}" "$factory_file"
-    read -r confirm
-    if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
-      log "INFO" "⏭️  Fábrica omitida: $factory_file"
-      exit 0
-    fi
-  fi
-}
 
 write_factory_file() {
   log "INFO" "Generando archivo de fábrica para $entity..."
@@ -107,6 +73,7 @@ log "INFO" "Entidad: $entity ($EntityPascal)"
 log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
 echo ""
 
-confirm_file_overwrite
-write_factory_file
+if confirm_overwrite "$factory_file" "fábrica"; then
+  write_factory_file
+fi
 log "SUCCESS" "✅ Fábrica generada: $factory_file"

@@ -231,22 +231,6 @@ run_docker_command() {
 
   return $exit_code
 }
-detect_project_dir() {
-  local current_dir="$PWD"
-
-  # Buscar package.json desde el directorio actual hacia arriba
-  while [ "$current_dir" != "/" ]; do
-    if [ -f "$current_dir/package.json" ]; then
-      echo "$current_dir"
-      return 0
-    fi
-    current_dir="$(dirname "$current_dir")"
-  done
-
-  # Si no se encuentra, usar el directorio actual
-  echo "$PWD"
-  return 1
-}
 
 # Función para ejecutar comandos de servidor con control interactivo
 run_server_command() {
@@ -475,7 +459,7 @@ read_option() {
   case "$choice" in
   1)
     echo -e "${GREEN}🧱 Inicializando proyecto...${NC}"
-    bash "$DIR/scripts/init-project.sh" -y
+    bash "$DIR/scripts/init-project.sh"
     ;;
   2)
     echo -e "${BLUE}🧬 Generador interactivo de entidades...${NC}"

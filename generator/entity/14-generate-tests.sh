@@ -3,38 +3,8 @@
 # shellcheck disable=SC2154,SC2086
 set -e
 
-# ===================================
-# Colores para output
-# ===================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-# ===================================
-# Logging
-# ===================================
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
-  esac
-}
-
-if [[ -z "${AUTO_CONFIRM+x}" ]]; then
-  readonly AUTO_CONFIRM=false
-fi
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
 
 validate_environment() {
   if [[ -z "$PARSED_FIELDS" ]]; then
@@ -109,14 +79,8 @@ create_test_file() {
   local file_path="$1"
   shift
 
-  if [[ -f "$file_path" ]]; then
-    if [[ "$AUTO_CONFIRM" != true ]]; then
-      read -rp "❗ El archivo $file_path ya existe. ¿Sobrescribir? (y/n): " confirm
-      if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        log "INFO" "Archivo omitido: $file_path"
-        return 0
-      fi
-    fi
+  if ! confirm_overwrite "$file_path" "test"; then
+    return 0
   fi
 
   cat >"$file_path" <<<"$*"

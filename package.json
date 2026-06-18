@@ -19,7 +19,7 @@
     "bash",
     "node"
   ],
-  "author": "Franco Toledo",
+  "author": "Franco Nicolás Toledo",
   "license": "MIT",
   "type": "module",
   "dependencies": {

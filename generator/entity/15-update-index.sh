@@ -2,45 +2,18 @@
 # update-index.sh - Actualiza el archivo index.js con rutas de entidad
 set -e
 
-# ===================================
-# Colores para output
-# ===================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-# ===================================
-# Logging
-# ===================================
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
-  esac
-}
+source "$PROJECT_ROOT/generator/common/logging.sh"
 
 readonly INDEX_FILE="src/index.js"
 
 validate_environment() {
   if [[ ! -f "$INDEX_FILE" ]]; then
-    log "WARN" "No se encontró '$INDEX_FILE'. Nada que actualizar."
+    log "WARN" "File '$INDEX_FILE' not found. Nothing to update."
     exit 0
   fi
 
   if [[ -z "${entity:-}" ]]; then
-    log "ERROR" "Variable 'entity' no definida. Abortando."
+    log "ERROR" "Variable 'entity' is not defined. Aborting."
     exit 1
   fi
 }
@@ -48,16 +21,16 @@ validate_environment() {
 initialize_variables() {
   entity_lower=$(echo "$entity" | tr '[:upper:]' '[:lower:]')
   entity_pascal=$(echo "$entity" | sed -E 's/(^|-)([a-z])/\U\2/g')
-  log "INFO" "Variables inicializadas: entity_lower='$entity_lower', entity_pascal='$entity_pascal'"
+  log "INFO" "Variables initialized: entity_lower='$entity_lower', entity_pascal='$entity_pascal'"
 }
 
 add_unique_line() {
   local line="$1"
   if grep -Fqx "$line" "$INDEX_FILE"; then
-    log "INFO" "Línea ya existe, no se añade: $line"
+    log "INFO" "Line already exists, skipping: $line"
   else
     echo "$line" >>"$INDEX_FILE"
-    log "SUCCESS" "Línea agregada: $line"
+    log "SUCCESS" "Line added: $line"
   fi
 }
 
@@ -70,7 +43,7 @@ apply_awk_transformation() {
 }
 
 setup_imports() {
-  log "INFO" "Configurando imports..."
+  log "INFO" "Setting up imports..."
 
   declare -A imports=(
     ["routes"]="import ${entity_lower}Routes from './interfaces/http/${entity_lower}/${entity_lower}.routes.js';"
@@ -81,10 +54,10 @@ setup_imports() {
   for key in "${!imports[@]}"; do
     local line="${imports[$key]}"
     if grep -Fq "$line" "$INDEX_FILE"; then
-      log "INFO" "Import '$key' ya existe."
+      log "INFO" "Import '$key' already exists."
     else
       add_import_after_last_import "$line"
-      log "SUCCESS" "Import '$key' agregado."
+      log "SUCCESS" "Import '$key' added."
     fi
   done
 }
@@ -104,11 +77,11 @@ add_import_after_last_import() {
         }
       }
     }
-  " "Import añadido después de la última declaración import"
+  " "Import added after last import statement"
 }
 
 setup_router_wrapper() {
-  log "INFO" "Configurando router wrapper..."
+  log "INFO" "Setting up router wrapper..."
 
   local router_wrapper_block="const ${entity_lower}RouterWithMiddlewares = wrapRouterWithFlexibleMiddlewares(${entity_lower}Routes, {
   globalMiddlewares: createQueryMiddlewares(${entity_lower}QueryConfig),
@@ -117,29 +90,29 @@ setup_router_wrapper() {
 });"
 
   if grep -Fq "const ${entity_lower}RouterWithMiddlewares" "$INDEX_FILE"; then
-    log "INFO" "Bloque del router ya existe, se omite inserción."
+    log "INFO" "Router block already exists, skipping insertion."
     return 0
   fi
 
-  log "INFO" "Estado actual de '$INDEX_FILE':"
-  log "INFO" "- Total de líneas: $(wc -l <"$INDEX_FILE")"
-  log "INFO" "- Declaraciones const: $(grep -c '^const' "$INDEX_FILE" || echo '0')"
-  log "INFO" "- Líneas con 'router': $(grep -c -i 'router' "$INDEX_FILE" || echo '0')"
+  log "INFO" "Current state of '$INDEX_FILE':"
+  log "INFO" "- Total lines: $(wc -l <"$INDEX_FILE")"
+  log "INFO" "- const declarations: $(grep -c '^const' "$INDEX_FILE" || echo '0')"
+  log "INFO" "- Lines with 'router': $(grep -c -i 'router' "$INDEX_FILE" || echo '0')"
 
   if add_router_wrapper_block "$router_wrapper_block"; then
-    log "SUCCESS" "Router wrapper configurado exitosamente."
+    log "SUCCESS" "Router wrapper configured successfully."
   else
-    log "ERROR" "Falló la configuración del router wrapper."
-    log "INFO" "Aplicando estrategia de fallback: insertar al final del archivo..."
+    log "ERROR" "Router wrapper configuration failed."
+    log "INFO" "Applying fallback strategy: inserting at end of file..."
 
     echo "" >>"$INDEX_FILE"
     echo "$router_wrapper_block" >>"$INDEX_FILE"
     echo "" >>"$INDEX_FILE"
 
     if grep -q "const ${entity_lower}RouterWithMiddlewares" "$INDEX_FILE"; then
-      log "SUCCESS" "Router insertado al final del archivo como fallback."
+      log "SUCCESS" "Router inserted at end of file as fallback."
     else
-      log "ERROR" "Error: Falló completamente la inserción del router."
+      log "ERROR" "Error: Router insertion failed completely."
       return 1
     fi
   fi
@@ -147,8 +120,8 @@ setup_router_wrapper() {
 
 add_router_wrapper_block() {
   local block="$1"
-  log "INFO" "Intentando insertar router wrapper..."
-  log "INFO" "Bloque a insertar:"
+  log "INFO" "Attempting router wrapper insertion..."
+  log "INFO" "Block to insert:"
 
   local inserted=false
   local patterns=(
@@ -162,7 +135,7 @@ add_router_wrapper_block() {
 
   for pattern in "${patterns[@]}"; do
     if grep -q "$pattern" "$INDEX_FILE"; then
-      log "SUCCESS" "Patrón encontrado: $pattern"
+      log "SUCCESS" "Pattern found: $pattern"
 
       awk -v block="$block" -v pat="$pattern" '
         BEGIN { added=0 }
@@ -177,7 +150,7 @@ add_router_wrapper_block() {
       if [[ -s "$INDEX_FILE.tmp" ]]; then
         mv "$INDEX_FILE.tmp" "$INDEX_FILE"
         inserted=true
-        log "SUCCESS" "Router insertado usando patrón: $pattern"
+        log "SUCCESS" "Router inserted using pattern: $pattern"
         break
       else
         rm -f "$INDEX_FILE.tmp"
@@ -186,7 +159,7 @@ add_router_wrapper_block() {
   done
 
   if [[ "$inserted" == false ]]; then
-    log "WARN" "No se encontraron patrones específicos, insertando después de última declaración const..."
+    log "WARN" "No specific patterns found, inserting after last const declaration..."
 
     awk -v block="$block" '
       BEGIN { last_const_line=0 }
@@ -211,27 +184,27 @@ add_router_wrapper_block() {
     ' "$INDEX_FILE" >"$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
 
     inserted=true
-    log "SUCCESS" "Router insertado después de la última declaración const."
+    log "SUCCESS" "Router inserted after last const declaration."
   fi
 
   if grep -q "const ${entity_lower}RouterWithMiddlewares" "$INDEX_FILE"; then
-    log "SUCCESS" "Verificación: router wrapper insertado correctamente."
+    log "SUCCESS" "Verification: router wrapper inserted correctly."
   else
-    log "ERROR" "Error: router wrapper no se insertó correctamente."
+    log "ERROR" "Error: router wrapper was not inserted correctly."
     return 1
   fi
 }
 
 setup_server_route() {
-  log "INFO" "Configurando ruta del servidor..."
+  log "INFO" "Setting up server route..."
 
   local route_line="    { path: '/${entity_lower}', handler: ${entity_lower}RouterWithMiddlewares },"
 
   if grep -Fq "$route_line" "$INDEX_FILE"; then
-    log "INFO" "Ruta ya existe en servidor, no se agrega."
+    log "INFO" "Route already exists in server, not adding."
   else
     add_server_route "$route_line"
-    log "SUCCESS" "Ruta agregada al servidor."
+    log "SUCCESS" "Route added to server."
   fi
 }
 
@@ -252,11 +225,11 @@ add_server_route() {
       added=1
     }
     { print }
-  " "Ruta agregada al array de rutas del servidor"
+  " "Route added to server routes array"
 }
 
 verify_updates() {
-  log "INFO" "Verificando actualizaciones..."
+  log "INFO" "Verifying updates..."
 
   local checks=(
     "import ${entity_lower}Routes"
@@ -269,16 +242,16 @@ verify_updates() {
 
   for check in "${checks[@]}"; do
     if grep -q "$check" "$INDEX_FILE"; then
-      log "SUCCESS" "Verificado: $check"
+      log "SUCCESS" "Verified: $check"
     else
-      log "ERROR" "Falta: $check"
-      log "INFO" "Buscando variaciones para debugging..."
+      log "ERROR" "Missing: $check"
+      log "INFO" "Searching for variations for debugging..."
 
       if [[ "$check" == "const ${entity_lower}RouterWithMiddlewares" ]]; then
-        log "INFO" "Líneas con '${entity_lower}Router':"
-        grep -n "${entity_lower}Router" "$INDEX_FILE" || log "INFO" "- Ninguna encontrada"
-        log "INFO" "Líneas con 'RouterWithMiddlewares':"
-        grep -n "RouterWithMiddlewares" "$INDEX_FILE" || log "INFO" "- Ninguna encontrada"
+        log "INFO" "Lines with '${entity_lower}Router':"
+        grep -n "${entity_lower}Router" "$INDEX_FILE" || log "INFO" "- None found"
+        log "INFO" "Lines with 'RouterWithMiddlewares':"
+        grep -n "RouterWithMiddlewares" "$INDEX_FILE" || log "INFO" "- None found"
       fi
 
       all_good=false
@@ -286,11 +259,11 @@ verify_updates() {
   done
 
   if [[ "$all_good" == true ]]; then
-    log "SUCCESS" "Todas las verificaciones pasaron correctamente."
+    log "SUCCESS" "All verifications passed successfully."
   else
-    log "WARN" "Algunas verificaciones fallaron."
+    log "WARN" "Some verifications failed."
     echo ""
-    log "INFO" "Últimas 10 líneas del archivo para debugging:"
+    log "INFO" "Last 10 lines for debugging:"
     tail -10 "$INDEX_FILE"
     echo ""
     return 1
@@ -298,13 +271,13 @@ verify_updates() {
 }
 
 main() {
-  log "INFO" "📝 Actualizando index.js para la entidad: $entity"
+  log "INFO" "📝 Updating index.js for entity: $entity"
 
   validate_environment
   initialize_variables
 
   cp "$INDEX_FILE" "$INDEX_FILE.backup"
-  log "INFO" "Backup creado: $INDEX_FILE.backup"
+  log "INFO" "Backup created: $INDEX_FILE.backup"
 
   setup_imports
   setup_router_wrapper
@@ -312,32 +285,32 @@ main() {
 
   if verify_updates; then
     rm "$INDEX_FILE.backup"
-    log "SUCCESS" "index.js actualizado correctamente para '$entity'"
-    log "INFO" "Backup eliminado (actualización exitosa)"
+    log "SUCCESS" "index.js updated successfully for '$entity'"
+    log "INFO" "Backup deleted (update successful)"
   else
-    log "WARN" "Hubo problemas en la verificación. Backup conservado."
+    log "WARN" "Verification had issues. Backup preserved."
     exit 1
   fi
 }
 
 show_help() {
   cat <<EOF
-Uso: $0
+Usage: $0
 
-Este script actualiza el archivo src/index.js para incluir las rutas
-de una nueva entidad.
+This script updates the src/index.js file to include the routes
+for a new entity.
 
-Variables requeridas:
-  entity    - Nombre de la entidad (ej: "user", "product")
+Required variables:
+  entity    - Entity name (e.g. "user", "product")
 
-Ejemplo:
+Example:
   entity="user" $0
 
-El script realiza:
-1. Agrega los imports necesarios
-2. Configura el router con middlewares
-3. Añade la ruta al servidor
-4. Verifica que todo se haya aplicado correctamente
+The script performs:
+1. Adds the necessary imports
+2. Configures the router with middlewares
+3. Adds the route to the server
+4. Verifies everything was applied correctly
 
 EOF
 }

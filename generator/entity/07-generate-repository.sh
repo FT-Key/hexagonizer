@@ -1,9 +1,12 @@
 #!/bin/bash
 # generator/entity/06-generate-repository-mocks.sh
-# Generador de repositorios InMemory y Database para una entidad
+# InMemory and Database repository generator for an entity
 # shellcheck disable=SC2154
 
 set -euo pipefail
+
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
 
 # =============================================================================
 # CONFIGURACIÓN
@@ -13,42 +16,16 @@ readonly INFRA_DIR="src/infrastructure"
 created_files=()
 
 # =============================================================================
-# COLORES Y LOGGING
-# =============================================================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - ✅ %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
-  esac
-}
-
-# =============================================================================
 # VALIDACIONES
 # =============================================================================
 validate_entity() {
   if [[ -z "${entity:-}" ]]; then
-    log "ERROR" "La variable 'entity' no está definida"
+    log "ERROR" "Variable 'entity' is not defined"
     exit 1
   fi
 
   if [[ -z "${EntityPascal:-}" ]]; then
-    log "ERROR" "La variable 'EntityPascal' no está definida"
+    log "ERROR" "Variable 'EntityPascal' is not defined"
     exit 1
   fi
 }
@@ -56,32 +33,14 @@ validate_entity() {
 # =============================================================================
 # ARCHIVOS Y DIRECTORIOS
 # =============================================================================
-write_file_with_confirm() {
-  local filepath="$1"
-  local content="$2"
-
-  if [[ -f "$filepath" && "${AUTO_CONFIRM:-false}" != "true" ]]; then
-    read -r -p "⚠️  El archivo $filepath ya existe. ¿Deseas sobrescribirlo? [y/n]: " confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-      log "INFO" "Archivo omitido: $filepath"
-      return 1
-    fi
-  fi
-
-  echo "$content" >"$filepath"
-  created_files+=("$filepath")
-  return 0
-}
-
 create_directory_structure() {
   local entity_dir="$INFRA_DIR/$entity"
 
-  if ! mkdir -p "$entity_dir"; then
-    log "ERROR" "No se pudo crear el directorio: $entity_dir"
+  if ! ensure_directory "$entity_dir"; then
     exit 1
   fi
 
-  log "INFO" "📁 Directorio creado: $entity_dir"
+  log "INFO" "📁 Directory created: $entity_dir"
 }
 
 # =============================================================================
@@ -222,7 +181,7 @@ EOF
 # FUNCIÓN PRINCIPAL DE GENERACIÓN
 # =============================================================================
 generate_repositories() {
-  log "INFO" "Iniciando generación de repositorios para la entidad: $entity"
+  log "INFO" "Starting repository generation for entity: $entity"
 
   validate_entity
   create_directory_structure
@@ -230,14 +189,14 @@ generate_repositories() {
   local in_memory_file="$INFRA_DIR/$entity/in-memory-${entity}-repository.js"
   local database_file="$INFRA_DIR/$entity/database-${entity}-repository.js"
 
-  log "INFO" "Generando repositorio en memoria..."
-  if write_file_with_confirm "$in_memory_file" "$(generate_in_memory_repository)"; then
-    log "SUCCESS" "Repositorio en memoria generado correctamente: $in_memory_file"
+  log "INFO" "Generating in-memory repository..."
+  if write_file "$(generate_in_memory_repository)" "$in_memory_file"; then
+    created_files+=("$in_memory_file")
   fi
 
-  log "INFO" "Generando repositorio de base de datos..."
-  if write_file_with_confirm "$database_file" "$(generate_database_repository)"; then
-    log "SUCCESS" "Repositorio de base de datos generado correctamente: $database_file"
+  log "INFO" "Generating database repository..."
+  if write_file "$(generate_database_repository)" "$database_file"; then
+    created_files+=("$database_file")
   fi
 }
 
@@ -246,13 +205,13 @@ generate_repositories() {
 # =============================================================================
 show_summary() {
   echo ""
-  log "INFO" "Resumen de generación de repositorios"
+  log "INFO" "Repository generation summary"
 
   if [[ ${#created_files[@]} -gt 0 ]]; then
-    log "SUCCESS" "Archivos creados:"
+    log "SUCCESS" "Files created:"
     printf '   %s\n' "${created_files[@]}"
   else
-    log "WARN" "No se creó ningún archivo nuevo."
+    log "WARN" "No new files were created."
   fi
 }
 

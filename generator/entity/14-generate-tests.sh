@@ -3,62 +3,34 @@
 # shellcheck disable=SC2154,SC2086
 set -e
 
-# ===================================
-# Colores para output
-# ===================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-# ===================================
-# Logging
-# ===================================
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
-  esac
-}
-
-readonly AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
 
 validate_environment() {
   if [[ -z "$PARSED_FIELDS" ]]; then
-    log "ERROR" "No se encontraron campos en \$PARSED_FIELDS para generate-tests"
+    log "ERROR" "No fields found in \$PARSED_FIELDS for generate-tests"
     exit 1
   fi
 
   if [[ -z "${entity:-}" ]]; then
-    log "ERROR" "Variable 'entity' no definida"
+    log "ERROR" "Variable 'entity' is not defined"
     exit 1
   fi
 
   if [[ -z "${EntityPascal:-}" ]]; then
-    log "ERROR" "Variable 'EntityPascal' no definida"
+    log "ERROR" "Variable 'EntityPascal' is not defined"
     exit 1
   fi
 }
 
 parse_fields() {
-  log "INFO" "Parseando campos desde PARSED_FIELDS..."
+  log "INFO" "Parsing fields from PARSED_FIELDS..."
   local fields_js
   fields_js=$(node -e "
     try {
       const { fields } = JSON.parse(process.env.PARSED_FIELDS);
       if (!Array.isArray(fields) || fields.length === 0) {
-        throw new Error('No se encontraron campos en el esquema');
+        throw new Error('No fields found in schema');
       }
       fields.forEach((f, i) => {
         const dummy = String(f.dummy || '').replace(/\"/g, '');
@@ -68,17 +40,17 @@ parse_fields() {
         console.log('test_updated[' + i + ']=\"' + updated + '\"');
       });
     } catch (e) {
-      console.error('❌ Error al parsear FIELDS en generate-tests:', e.message);
+      console.error('❌ Error parsing FIELDS in generate-tests:', e.message);
       process.exit(1);
     }
   " PARSED_FIELDS="$PARSED_FIELDS")
 
   eval "$fields_js"
-  log "SUCCESS" "Campos parseados correctamente"
+  log "SUCCESS" "Fields parsed successfully"
 }
 
 build_test_data() {
-  log "INFO" "Construyendo datos de test..."
+  log "INFO" "Building test data..."
   input_entries=""
   factory_asserts=""
   create_asserts=""
@@ -100,25 +72,19 @@ build_test_data() {
   input_entries=$(echo -e "$input_entries" | sed '$s/,\n$//')
   update_entries=$(echo -e "$update_entries" | sed '$s/,\n$//')
 
-  log "SUCCESS" "Datos de test construidos correctamente"
+  log "SUCCESS" "Test data built successfully"
 }
 
 create_test_file() {
   local file_path="$1"
   shift
 
-  if [[ -f "$file_path" ]]; then
-    if [[ "$AUTO_CONFIRM" != true ]]; then
-      read -rp "❗ El archivo $file_path ya existe. ¿Sobrescribir? (y/n): " confirm
-      if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        log "INFO" "Archivo omitido: $file_path"
-        return 0
-      fi
-    fi
+  if ! confirm_overwrite "$file_path" "test"; then
+    return 0
   fi
 
   cat >"$file_path" <<<"$*"
-  log "SUCCESS" "Test generado: $file_path"
+  log "SUCCESS" "Test generated: $file_path"
 }
 
 generate_create_test() {
@@ -332,7 +298,7 @@ EOF
 }
 
 main() {
-  log "INFO" "Iniciando generación de tests para la entidad: $entity"
+  log "INFO" "Starting test generation for entity: $entity"
 
   validate_environment
 
@@ -342,14 +308,14 @@ main() {
   parse_fields
   build_test_data
 
-  log "INFO" "Generando archivos de test..."
+  log "INFO" "Generating test files..."
   generate_create_test "$test_path"
   generate_get_test "$test_path"
   generate_update_test "$test_path"
   generate_delete_test "$test_path"
   generate_deactivate_test "$test_path"
 
-  log "SUCCESS" "Tests generados exitosamente en: $test_path"
+  log "SUCCESS" "Tests generated successfully in: $test_path"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

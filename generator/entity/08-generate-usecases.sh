@@ -3,101 +3,18 @@
 # shellcheck disable=SC2154
 set -euo pipefail
 
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
+
 # ==========================================
 # CONFIGURACIÓN Y CONSTANTES
 # ==========================================
-# Solo definir SCRIPT_DIR si no existe (para compatibilidad con otros módulos)
 if [[ -z "${SCRIPT_DIR:-}" ]]; then
   readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
 readonly USE_CASES_BASE_PATH="src/application"
 readonly DOMAIN_BASE_PATH="src/domain"
-
-# Colores para output (definir solo si no están definidos)
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-# ==========================================
-# FUNCIONES DE UTILIDAD
-# ==========================================
-
-# Función para logging con colores
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC} %s: %s\n" "$timestamp" "$message" >&2 ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  esac
-}
-
-# Función mejorada para pluralización
-pluralize() {
-  local word="$1"
-
-  # Casos especiales en español e inglés
-  case "$word" in
-  *[aeiou]) echo "${word}s" ;;
-  *[zs]) echo "${word}es" ;;
-  *y) echo "${word%y}ies" ;;
-  *) echo "${word}s" ;;
-  esac
-}
-
-# Función para validar entrada
-validate_entity() {
-  local entity="$1"
-
-  if [[ -z "$entity" ]]; then
-    log "ERROR" "El nombre de la entidad no puede estar vacío"
-    return 1
-  fi
-
-  if [[ ! "$entity" =~ ^[a-zA-Z][a-zA-Z0-9_-]*$ ]]; then
-    log "ERROR" "El nombre de la entidad debe comenzar con una letra y contener solo letras, números, guiones y guiones bajos"
-    return 1
-  fi
-
-  return 0
-}
-
-# Función para confirmar sobrescritura
-confirm_overwrite() {
-  local file_path="$1"
-  local auto_confirm="${AUTO_CONFIRM:-false}"
-
-  if [[ -f "$file_path" && "$auto_confirm" != "true" ]]; then
-    printf "${YELLOW}⚠️  El archivo %s ya existe. ¿Deseas sobrescribirlo? [s/N]: ${NC}" "$file_path"
-    read -r confirm
-    if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
-      log "INFO" "Omitido: $file_path"
-      return 1
-    fi
-  fi
-  return 0
-}
-
-# Función para crear directorio de forma segura
-ensure_directory() {
-  local dir_path="$1"
-
-  if ! mkdir -p "$dir_path" 2>/dev/null; then
-    log "ERROR" "No se pudo crear el directorio: $dir_path"
-    return 1
-  fi
-}
 
 # ==========================================
 # GENERADORES DE CÓDIGO
@@ -285,7 +202,7 @@ generate_use_case() {
 
   # Validar que el generador existe
   if [[ -z "${USE_CASE_GENERATORS[$action]:-}" ]]; then
-    log "ERROR" "Acción no soportada: $action"
+    log "ERROR" "Unsupported action: $action"
     return 1
   fi
 
@@ -317,9 +234,9 @@ generate_use_case() {
 
   # Escribir el archivo
   if printf "%s\n" "$content" >"$file_path"; then
-    log "SUCCESS" "Generado: $file_path"
+    log "SUCCESS" "Generated: $file_path"
   else
-    log "ERROR" "No se pudo escribir el archivo: $file_path"
+    log "ERROR" "Could not write file: $file_path"
     return 1
   fi
 }
@@ -342,8 +259,8 @@ generate_all_use_cases() {
   local generated_count=0
   local failed_count=0
 
-  log "INFO" "Iniciando generación de casos de uso para la entidad: $entity"
-  log "INFO" "Acciones a generar: ${actions[*]}"
+  log "INFO" "Starting use case generation for entity: $entity"
+  log "INFO" "Actions to generate: ${actions[*]}"
 
   for action in "${actions[@]}"; do
     if generate_use_case "$action" "$entity" "$entity_pascal" "$has_json"; then
@@ -356,9 +273,9 @@ generate_all_use_cases() {
   # Resumen final
   echo ""
   if [[ $failed_count -eq 0 ]]; then
-    log "SUCCESS" "Todos los casos de uso generados exitosamente ($generated_count/$((generated_count + failed_count)))"
+    log "SUCCESS" "All use cases generated successfully ($generated_count/$((generated_count + failed_count)))"
   else
-    log "WARN" "Generación completada con algunos errores ($generated_count exitosos, $failed_count fallidos)"
+    log "WARN" "Generation completed with some errors ($generated_count successful, $failed_count failed)"
   fi
 }
 
@@ -369,13 +286,13 @@ generate_all_use_cases() {
 main() {
   # Verificar que las variables necesarias estén definidas
   if [[ -z "${entity:-}" ]] || [[ -z "${EntityPascal:-}" ]]; then
-    log "ERROR" "Las variables 'entity' y 'EntityPascal' deben estar definidas antes de ejecutar"
-    log "INFO" "Variables requeridas:"
-    log "INFO" "  - entity: nombre de la entidad en minúsculas (ej: 'user')"
-    log "INFO" "  - EntityPascal: nombre de la entidad en PascalCase (ej: 'User')"
-    log "INFO" "Variables opcionales:"
+    log "ERROR" "Variables 'entity' and 'EntityPascal' must be defined before running"
+    log "INFO" "Required variables:"
+    log "INFO" "  - entity: lowercase entity name (e.g. 'user')"
+    log "INFO" "  - EntityPascal: entity name in PascalCase (e.g. 'User')"
+    log "INFO" "Optional variables:"
     log "INFO" "  - has_json: usar factory con JSON (default: false)"
-    log "INFO" "  - AUTO_CONFIRM: confirmar automáticamente sobrescrituras (default: false)"
+    log "INFO" "  - AUTO_CONFIRM: auto-confirm overwrites (default: false)"
     return 1
   fi
 
@@ -384,10 +301,10 @@ main() {
     return 1
   fi
 
-  log "INFO" "=== GENERADOR DE CASOS DE USO ==="
-  log "INFO" "Entidad: $entity ($EntityPascal)"
-  log "INFO" "Configuración JSON Factory: ${has_json:-false}"
-  log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
+  log "INFO" "=== USE CASE GENERATOR ==="
+  log "INFO" "Entity: $entity ($EntityPascal)"
+  log "INFO" "JSON Factory config: ${has_json:-false}"
+  log "INFO" "Auto-confirm: ${AUTO_CONFIRM:-false}"
   echo ""
 
   # Ejecutar generación
@@ -407,22 +324,22 @@ show_use_cases_summary() {
   local success="$1"
 
   echo ""
-  log "INFO" "=== RESUMEN DE GENERACIÓN DE CASOS DE USO ==="
+  log "INFO" "=== USE CASE GENERATION SUMMARY ==="
 
   if [[ "$success" == true ]]; then
-    log "SUCCESS" "✅ Casos de uso generados exitosamente"
-    log "INFO" "Ubicación: ${USE_CASES_BASE_PATH}/$entity/use-cases/"
+    log "SUCCESS" "✅ Use cases generated successfully"
+    log "INFO" "Location: ${USE_CASES_BASE_PATH}/$entity/use-cases/"
 
-    # Mostrar archivos generados
+    # Show generated files
     if [[ -d "${USE_CASES_BASE_PATH}/$entity/use-cases" ]]; then
-      log "INFO" "Archivos generados:"
+      log "INFO" "Generated files:"
       find "${USE_CASES_BASE_PATH}/$entity/use-cases" -name "*.js" -type f | while read -r file; do
         log "INFO" "  📄 $(basename "$file")"
       done
     fi
   else
-    log "ERROR" "❌ La generación de casos de uso falló"
-    log "INFO" "Revisa los mensajes de error anteriores para más detalles"
+    log "ERROR" "❌ Use case generation failed"
+    log "INFO" "Check previous error messages for details"
   fi
 
   echo ""

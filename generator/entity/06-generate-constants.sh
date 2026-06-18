@@ -3,41 +3,18 @@
 # shellcheck disable=SC2154
 set -e
 
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
+
 constants_file="src/domain/$entity/constants.js"
 mocks_file="src/domain/$entity/mocks.js"
-
-# ==========================================
-# COLORES Y LOGGING (locales al archivo)
-# ==========================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC} %s: %s\n" "$timestamp" "$message" >&2 ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s: ✅ %s\n" "$timestamp" "$message" ;;
-  esac
-}
 
 # ==========================================
 # LÓGICA PRINCIPAL
 # ==========================================
 
 extract_schema_constants() {
-  log "INFO" "Extrayendo constantes y mocks desde esquema JSON..."
+  log "INFO" "Extracting constants and mocks from JSON schema..."
 
   local tmp_script
   tmp_script=$(mktemp)
@@ -139,27 +116,13 @@ EOF
 
   rm -f "$tmp_script"
 
-  log "SUCCESS" "Extracción completada correctamente"
-}
-
-confirm_file_overwrite() {
-  local file="$1"
-  local file_type="$2"
-
-  if [[ -f "$file" && "$AUTO_CONFIRM" != true ]]; then
-    read -r -p "⚠️  El archivo $file ya existe. ¿Desea sobrescribirlo? [y/n]: " confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-      log "INFO" "Se omitió la generación de $file_type: $file"
-      return 1
-    fi
-  fi
-  return 0
+  log "SUCCESS" "Extraction completed successfully"
 }
 
 write_constants_file() {
-  if ! confirm_file_overwrite "$constants_file" "constantes"; then return; fi
+  if ! confirm_overwrite "$constants_file" "constants"; then return; fi
 
-  log "INFO" "Generando archivo de constantes: $constants_file"
+  log "INFO" "Generating constants file: $constants_file"
 
   cat >"$constants_file" <<EOF
 // Constantes relacionadas con $EntityPascal
@@ -186,13 +149,13 @@ export const ENTITY_STATES = {
 };
 EOF
 
-  log "SUCCESS" "Constantes generadas: $constants_file"
+  log "SUCCESS" "Constants generated: $constants_file"
 }
 
 write_mocks_file() {
-  if ! confirm_file_overwrite "$mocks_file" "mocks"; then return; fi
+  if ! confirm_overwrite "$mocks_file" "mocks"; then return; fi
 
-  log "INFO" "Generando archivo de mocks: $mocks_file"
+  log "INFO" "Generating mocks file: $mocks_file"
 
   cat >"$mocks_file" <<EOF
 // Mocks y datos de prueba para $EntityPascal
@@ -229,15 +192,15 @@ export const create${EntityPascal}Instance = (overrides = {}) => {
 };
 EOF
 
-  log "SUCCESS" "Mocks generados: $mocks_file"
+  log "SUCCESS" "Mocks generated: $mocks_file"
 }
 
 # ==========================================
 # EJECUCIÓN
 # ==========================================
-log "INFO" "=== GENERADOR DE CONSTANTES Y MOCKS ==="
-log "INFO" "Entidad: $entity ($EntityPascal)"
-log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
+log "INFO" "=== CONSTANTS AND MOCKS GENERATOR ==="
+log "INFO" "Entity: $entity ($EntityPascal)"
+log "INFO" "Auto-confirm: ${AUTO_CONFIRM:-false}"
 echo ""
 
 extract_schema_constants
@@ -245,4 +208,4 @@ write_constants_file
 write_mocks_file
 
 echo ""
-log "INFO" "🏁 Generación finalizada"
+log "INFO" "🏁 Generation finished"

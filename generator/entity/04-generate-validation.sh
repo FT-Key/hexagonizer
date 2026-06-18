@@ -3,56 +3,16 @@
 # shellcheck disable=SC2154
 set -e
 
-# ==========================================
-# COLORES Y LOGGING (inline, no modularizado aún)
-# ==========================================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC} %s: %s\n" "$timestamp" "$message" >&2 ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  esac
-}
-
-confirm_overwrite() {
-  local file_path="$1"
-  local file_type="${2:-archivo}"
-  local auto_confirm="${AUTO_CONFIRM:-false}"
-
-  if [[ -e "$file_path" && "$auto_confirm" != "true" ]]; then
-    printf "${YELLOW}⚠️  El %s %s ya existe. ¿Deseas sobrescribirlo? [s/N]: ${NC}" "$file_type" "$file_path"
-    read -r confirm
-    if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
-      log "INFO" "⏭️  Omitido: $file_path"
-      return 1
-    fi
-  fi
-  return 0
-}
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
 
 # ==========================================
 # GENERADOR DE VALIDACIÓN
 # ==========================================
-
 validate_file="src/domain/$entity/validate-$entity.js"
 
 extract_validation_data() {
-  log "INFO" "Extrayendo validaciones del esquema JSON..."
+  log "INFO" "Extracting validations from JSON schema..."
   while IFS='=' read -r key value; do
     eval "$key=$value"
   done < <(
@@ -82,7 +42,7 @@ extract_validation_data() {
       });
     "
   )
-  log "INFO" "Campos analizados: ${#v_names[@]}"
+  log "INFO" "Fields analyzed: ${#v_names[@]}"
 }
 
 build_field_validation() {
@@ -128,7 +88,7 @@ build_field_validation() {
 }
 
 build_validations() {
-  log "INFO" "Generando reglas de validación..."
+  log "INFO" "Generating validation rules..."
   validation_lines=""
 
   for i in "${!v_names[@]}"; do
@@ -152,17 +112,17 @@ EOF
 # EJECUCIÓN PRINCIPAL
 # ==========================================
 
-log "INFO" "=== GENERADOR DE VALIDACIONES ==="
-log "INFO" "Entidad: $entity ($EntityPascal)"
-log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
+log "INFO" "=== VALIDATION GENERATOR ==="
+log "INFO" "Entity: $entity ($EntityPascal)"
+log "INFO" "Auto-confirm: ${AUTO_CONFIRM:-false}"
 echo ""
 
 extract_validation_data
 build_validations
 
-if confirm_overwrite "$validate_file" "archivo de validación"; then
+if confirm_overwrite "$validate_file" "validation file"; then
   write_validation_file
-  log "SUCCESS" "✅ Validación generada: $validate_file"
+  log "SUCCESS" "✅ Validation generated: $validate_file"
 else
-  log "INFO" "⏭️  Validación omitida: $validate_file"
+  log "INFO" "⏭️  Validation skipped: $validate_file"
 fi

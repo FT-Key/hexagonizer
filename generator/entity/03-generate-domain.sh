@@ -141,9 +141,9 @@ EOF
 # EJECUCIÓN
 # ==========================================
 
-log "INFO" "=== GENERADOR DE DOMINIO ==="
-log "INFO" "Entidad: $entity ($EntityPascal)"
-log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
+log "INFO" "=== DOMAIN GENERATOR ==="
+log "INFO" "Entity: $entity ($EntityPascal)"
+log "INFO" "Auto-confirm: ${AUTO_CONFIRM:-false}"
 echo ""
 
 setup_domain_directory
@@ -151,8 +151,8 @@ extract_field_data
 build_constructor
 build_accessors
 build_methods
-if confirm_overwrite "$domain_file" "clase de dominio"; then
+if confirm_overwrite "$domain_file" "domain class"; then
   write_domain_class
 fi
 
-log "SUCCESS" "✅ Clase generada: $domain_file"
+log "SUCCESS" "✅ Domain class generated: $domain_file"

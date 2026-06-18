@@ -15,34 +15,34 @@ readonly SCHEMA_DIR="./entity-schemas"
 # UTILITY FUNCTIONS
 # ========================
 
-# Función para verificar si un directorio existe
+# Check if a directory exists
 directory_exists() {
   [[ -d "$1" ]]
 }
 
-# Función para verificar si un archivo existe
+# Check if a file exists
 file_exists() {
   [[ -f "$1" ]]
 }
 
-# Función para crear directorio si no existe
+# Create directory if it doesn't exist
 ensure_directory_exists() {
   local dir="$1"
 
   if ! directory_exists "$dir"; then
-    log "INFO" "Creando directorio: $dir"
+    log "INFO" "Creating directory: $dir"
     if mkdir -p "$dir"; then
-      log "SUCCESS" "Directorio creado: $dir"
+      log "SUCCESS" "Directory created: $dir"
     else
-      log "ERROR" "Error creando directorio: $dir"
+      log "ERROR" "Error creating directory: $dir"
       return 1
     fi
   else
-    log "DEBUG" "Directorio ya existe: $dir"
+    log "DEBUG" "Directory already exists: $dir"
   fi
 }
 
-# Función para validar número dentro de rango
+# Validate number within range
 validate_number_range() {
   local input="$1"
   local min="$2"
@@ -59,7 +59,7 @@ validate_number_range() {
 display_available_schemas() {
   local json_files=("$@")
 
-  log "INFO" "Archivos de esquema disponibles:"
+  log "INFO" "Available schema files:"
   for i in "${!json_files[@]}"; do
     local filename
     filename=$(basename "${json_files[i]}")
@@ -71,47 +71,47 @@ display_available_schemas() {
 get_json_files() {
   local -n json_files_ref=$1
 
-  log "INFO" "Buscando archivos JSON en: $SCHEMA_DIR"
+  log "INFO" "Looking for JSON files in: $SCHEMA_DIR"
 
   mapfile -t json_files_ref < <(find "$SCHEMA_DIR" -maxdepth 1 -type f -name '*.json' | sort)
 
   if [[ ${#json_files_ref[@]} -eq 0 ]]; then
-    log "ERROR" "No se encontraron archivos JSON en $SCHEMA_DIR"
+    log "ERROR" "No JSON files found in $SCHEMA_DIR"
     return 1
   fi
 
-  log "SUCCESS" "Encontrados ${#json_files_ref[@]} archivo(s) JSON"
+  log "SUCCESS" "Found ${#json_files_ref[@]} JSON file(s)"
 }
 
-# Solicitar selección de archivo al usuario
+# Prompt file selection
 prompt_file_selection() {
   local -n json_files_ref=$1
   local selected_num
 
   display_available_schemas "${json_files_ref[@]}"
 
-  log "INPUT" "Seleccione el archivo JSON para usar"
-  read -r -p "Ingrese número (1-${#json_files_ref[@]}): " selected_num
+  log "INPUT" "Select the JSON file to use"
+  read -r -p "Enter number (1-${#json_files_ref[@]}): " selected_num
 
   if ! validate_number_range "$selected_num" 1 "${#json_files_ref[@]}"; then
-    log "ERROR" "Selección inválida: $selected_num"
+    log "ERROR" "Invalid selection: $selected_num"
     return 1
   fi
 
   SCHEMA_FILE="${json_files_ref[selected_num - 1]}"
-  log "SUCCESS" "Archivo seleccionado: $(basename "$SCHEMA_FILE")"
+  log "SUCCESS" "Selected file: $(basename "$SCHEMA_FILE")"
 }
 
 # Cargar esquema desde archivo JSON
 load_schema_from_json() {
   log "INFO" "Iniciando carga de esquema desde JSON"
 
-  log "INPUT" "Ingrese ruta al archivo JSON de esquema de entidad"
-  echo "   (o presione Enter para listar archivos disponibles en $SCHEMA_DIR):"
+  log "INPUT" "Enter path to the entity schema JSON file"
+  echo "   (or press Enter to list available files in $SCHEMA_DIR):"
   read -r input_path
 
   if [[ -z "$input_path" ]]; then
-    log "INFO" "No se especificó ruta, listando archivos disponibles"
+    log "INFO" "No path specified, listing available files"
 
     ensure_directory_exists "$SCHEMA_DIR" || return 1
 
@@ -120,43 +120,49 @@ load_schema_from_json() {
 
     prompt_file_selection json_files || return 1
   else
-    log "INFO" "Verificando archivo especificado: $input_path"
+    log "INFO" "Verifying specified file: $input_path"
 
     if ! file_exists "$input_path"; then
-      log "ERROR" "No se encontró el archivo JSON: $input_path"
+      log "ERROR" "JSON file not found: $input_path"
       return 1
     fi
 
     SCHEMA_FILE="$input_path"
-    log "SUCCESS" "Archivo JSON encontrado: $input_path"
+    log "SUCCESS" "JSON file found: $input_path"
   fi
 
-  log "INFO" "Cargando contenido del esquema..."
+  log "INFO" "Loading schema content..."
   if SCHEMA_CONTENT=$(cat "$SCHEMA_FILE"); then
     ENTITY_NAME=$(basename "$SCHEMA_FILE" .json | tr '[:upper:]' '[:lower:]')
-    log "SUCCESS" "Esquema cargado exitosamente para entidad: $ENTITY_NAME"
+    log "SUCCESS" "Schema loaded successfully for entity: $ENTITY_NAME"
   else
-    log "ERROR" "Error leyendo archivo de esquema: $SCHEMA_FILE"
+    log "ERROR" "Error reading schema file: $SCHEMA_FILE"
     return 1
   fi
 }
 
 # Crear esquema por defecto
 create_default_schema() {
-  log "INFO" "Creando esquema por defecto"
+  log "INFO" "Creating default schema"
 
-  log "INPUT" "Ingrese el nombre de la entidad"
-  read -r -p "📝 Nombre de la entidad (ej. user, product): " entity
+  if [[ -z "$ENTITY_NAME" ]]; then
+    log "INPUT" "Enter the entity name"
+    read -r -p "Entity name (e.g. user, product): " entity_input
+    entity_input="${entity_input,,}"
+  else
+    entity_input="$ENTITY_NAME"
+    log "INFO" "Entity name received: $entity_input"
+  fi
 
-  if [[ -z "$entity" ]]; then
-    log "ERROR" "El nombre de la entidad no puede estar vacío"
+  if [[ -z "$entity_input" ]]; then
+    log "ERROR" "Entity name cannot be empty"
     return 1
   fi
 
-  ENTITY_NAME="${entity,,}"
-  log "SUCCESS" "Nombre de entidad establecido: $ENTITY_NAME"
+  ENTITY_NAME="$entity_input"
+  log "SUCCESS" "Entity name set: $ENTITY_NAME"
 
-  log "INFO" "Generando esquema por defecto..."
+  log "INFO" "Generating default schema..."
   SCHEMA_CONTENT=$(
     cat <<EOF
 {
@@ -174,7 +180,7 @@ create_default_schema() {
 EOF
   )
   SCHEMA_FILE=""
-  log "SUCCESS" "Esquema por defecto creado"
+  log "SUCCESS" "Default schema created"
 }
 
 # ========================
@@ -183,20 +189,20 @@ EOF
 
 # Validar nombre de entidad
 validate_entity_name() {
-  log "INFO" "Validando nombre de entidad: $ENTITY_NAME"
+  log "INFO" "Validating entity name: $ENTITY_NAME"
 
   local clean_name
   clean_name=$(echo "$ENTITY_NAME" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -cd '[:alnum:]')
 
   if [[ -z "$clean_name" ]]; then
-    log "ERROR" "El nombre de la entidad no puede estar vacío o contener caracteres inválidos"
+    log "ERROR" "Entity name cannot be empty or contain invalid characters"
     return 1
   fi
 
   entity="$clean_name"
   EntityPascal="$(tr '[:lower:]' '[:upper:]' <<<"${clean_name:0:1}")${clean_name:1}"
 
-  log "SUCCESS" "Nombre de entidad validado - snake_case: $entity, PascalCase: $EntityPascal"
+  log "SUCCESS" "Entity name validated - snake_case: $entity, PascalCase: $EntityPascal"
 }
 
 # ========================
@@ -205,37 +211,37 @@ validate_entity_name() {
 
 # Parsear campos del esquema
 parse_schema_fields() {
-  log "INFO" "Iniciando parsing de campos del esquema"
+  log "INFO" "Starting schema field parsing"
 
   local parser_script="$PROJECT_ROOT/generator/utils/parse-schema-fields.js"
 
   if ! file_exists "$parser_script"; then
-    log "ERROR" "No se encontró el parser de esquemas: $parser_script"
+    log "ERROR" "Schema parser not found: $parser_script"
     return 1
   fi
 
   if [[ -n "$SCHEMA_FILE" ]]; then
-    log "INFO" "Parseando desde archivo: $SCHEMA_FILE"
+    log "INFO" "Parsing from file: $SCHEMA_FILE"
     if PARSED_FIELDS=$(node "$parser_script" "$SCHEMA_FILE"); then
-      log "SUCCESS" "Campos parseados desde archivo exitosamente"
+      log "SUCCESS" "Fields parsed from file successfully"
     else
-      log "ERROR" "Error parseando campos desde archivo"
+      log "ERROR" "Error parsing fields from file"
       return 1
     fi
   elif [[ -n "$SCHEMA_CONTENT" ]]; then
-    log "INFO" "Parseando desde contenido en memoria"
+    log "INFO" "Parsing from in-memory content"
     if PARSED_FIELDS=$(echo "$SCHEMA_CONTENT" | node "$parser_script"); then
-      log "SUCCESS" "Campos parseados desde contenido exitosamente"
+      log "SUCCESS" "Fields parsed from content successfully"
     else
-      log "ERROR" "Error parseando campos desde contenido"
+      log "ERROR" "Error parsing fields from content"
       return 1
     fi
   else
-    log "ERROR" "No se puede generar campos: sin esquema disponible"
+    log "ERROR" "Cannot generate fields: no schema available"
     return 1
   fi
 
-  log "DEBUG" "Campos parseados guardados en variable PARSED_FIELDS"
+  log "DEBUG" "Parsed fields stored in PARSED_FIELDS variable"
 }
 
 # ========================
@@ -244,14 +250,14 @@ parse_schema_fields() {
 
 # Exportar variables para otros scripts
 export_schema_variables() {
-  log "INFO" "Exportando variables de esquema para otros scripts"
+  log "INFO" "Exporting schema variables for other scripts"
 
   export entity EntityPascal SCHEMA_FILE SCHEMA_CONTENT PARSED_FIELDS
 
-  log "DEBUG" "Variables exportadas:"
+  log "DEBUG" "Exported variables:"
   log "DEBUG" "  - entity: $entity"
   log "DEBUG" "  - EntityPascal: $EntityPascal"
-  log "DEBUG" "  - SCHEMA_FILE: ${SCHEMA_FILE:-'(vacío)'}"
+  log "DEBUG" "  - SCHEMA_FILE: ${SCHEMA_FILE:-'(empty)'}"
   log "DEBUG" "  - has_json: ${has_json:-'false'}"
 }
 
@@ -259,25 +265,25 @@ export_schema_variables() {
 # MAIN FUNCTION
 # ========================
 main() {
-  log "INFO" "Iniciando carga de esquema de entidad"
+  log "INFO" "Starting entity schema loading"
 
-  # Determinar modo de carga según USE_JSON
+  # Determine load mode based on USE_JSON
   if [[ "$USE_JSON" == true ]]; then
-    log "INFO" "Modo JSON activado, cargando desde archivo"
+    log "INFO" "JSON mode enabled, loading from file"
     if load_schema_from_json; then
       export has_json=true
-      log "SUCCESS" "Esquema JSON cargado exitosamente"
+      log "SUCCESS" "JSON schema loaded successfully"
     else
-      log "ERROR" "Error cargando esquema JSON"
+      log "ERROR" "Error loading JSON schema"
       return 1
     fi
   else
-    log "INFO" "Modo por defecto activado, creando esquema estándar"
+    log "INFO" "Default mode active, creating standard schema"
     if create_default_schema; then
       export has_json=false
-      log "SUCCESS" "Esquema por defecto creado exitosamente"
+      log "SUCCESS" "Default schema created successfully"
     else
-      log "ERROR" "Error creando esquema por defecto"
+      log "ERROR" "Error creating default schema"
       return 1
     fi
   fi
@@ -287,18 +293,18 @@ main() {
   parse_schema_fields || return 1
   export_schema_variables
 
-  log "SUCCESS" "Carga de esquema completada - Entidad: $entity ($EntityPascal)"
+  log "SUCCESS" "Schema loading completed - Entity: $entity ($EntityPascal)"
 }
 
 # ========================
 # EXECUTION LOGIC
 # ========================
-# Si se llama directamente con bash
+# If called directly with bash
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
 
-# Si se hace source y hay condiciones específicas
+# If sourced and specific conditions exist
 if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_QUERY_UTILS:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

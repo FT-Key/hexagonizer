@@ -15,7 +15,7 @@ init_environment() {
   if [[ -f "$confirm_script" ]]; then
     source "$confirm_script"
   else
-    log "ERROR" "confirm-action.sh no encontrado"
+    log "ERROR" "confirm-action.sh not found"
     return 1
   fi
 }
@@ -30,7 +30,7 @@ write_file_with_confirm() {
     if [[ "$AUTO_YES" == true ]]; then
       echo "$content" >"$filepath"
     else
-      confirm_action "El archivo $(basename "$filepath") ya existe. ¿Sobrescribir? (y/n): " || return 1
+      confirm_action "File $(basename "$filepath") already exists. Overwrite? (y/n): " || return 1
       echo "$content" >"$filepath"
     fi
   else
@@ -85,7 +85,7 @@ EOF
 create_database_files() {
   write_file_with_confirm "src/config/database.js" "$(generate_database_config_content)"
   write_file_with_confirm "src/infrastructure/database/database.js" "$(generate_database_connection_content)"
-  log "SUCCESS" "Archivos de base de datos creados"
+  log "SUCCESS" "Database files created"
 }
 
 # ========================
@@ -100,12 +100,6 @@ main() {
 # ========================
 # EXECUTION LOGIC
 # ========================
-# Si se llama directamente con bash
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
-
-# Si se hace source y hay condiciones específicas
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_DATABASE_CONFIG:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

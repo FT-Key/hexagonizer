@@ -75,13 +75,9 @@ main() {
 </body>
 </html>
 "
-  log "SUCCESS" "Página de inicio HTML creada"
+  log "SUCCESS" "HTML home page created"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
-
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_HTML:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

@@ -58,7 +58,3 @@ export class Server {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
-
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_SERVER:-}" || $# -gt 0) ]]; then
-  main "$@"
-fi

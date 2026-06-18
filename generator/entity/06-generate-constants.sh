@@ -14,7 +14,7 @@ mocks_file="src/domain/$entity/mocks.js"
 # ==========================================
 
 extract_schema_constants() {
-  log "INFO" "Extrayendo constantes y mocks desde esquema JSON..."
+  log "INFO" "Extracting constants and mocks from JSON schema..."
 
   local tmp_script
   tmp_script=$(mktemp)
@@ -116,13 +116,13 @@ EOF
 
   rm -f "$tmp_script"
 
-  log "SUCCESS" "Extracción completada correctamente"
+  log "SUCCESS" "Extraction completed successfully"
 }
 
 write_constants_file() {
-  if ! confirm_overwrite "$constants_file" "constantes"; then return; fi
+  if ! confirm_overwrite "$constants_file" "constants"; then return; fi
 
-  log "INFO" "Generando archivo de constantes: $constants_file"
+  log "INFO" "Generating constants file: $constants_file"
 
   cat >"$constants_file" <<EOF
 // Constantes relacionadas con $EntityPascal
@@ -149,13 +149,13 @@ export const ENTITY_STATES = {
 };
 EOF
 
-  log "SUCCESS" "Constantes generadas: $constants_file"
+  log "SUCCESS" "Constants generated: $constants_file"
 }
 
 write_mocks_file() {
   if ! confirm_overwrite "$mocks_file" "mocks"; then return; fi
 
-  log "INFO" "Generando archivo de mocks: $mocks_file"
+  log "INFO" "Generating mocks file: $mocks_file"
 
   cat >"$mocks_file" <<EOF
 // Mocks y datos de prueba para $EntityPascal
@@ -192,15 +192,15 @@ export const create${EntityPascal}Instance = (overrides = {}) => {
 };
 EOF
 
-  log "SUCCESS" "Mocks generados: $mocks_file"
+  log "SUCCESS" "Mocks generated: $mocks_file"
 }
 
 # ==========================================
 # EJECUCIÓN
 # ==========================================
-log "INFO" "=== GENERADOR DE CONSTANTES Y MOCKS ==="
-log "INFO" "Entidad: $entity ($EntityPascal)"
-log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
+log "INFO" "=== CONSTANTS AND MOCKS GENERATOR ==="
+log "INFO" "Entity: $entity ($EntityPascal)"
+log "INFO" "Auto-confirm: ${AUTO_CONFIRM:-false}"
 echo ""
 
 extract_schema_constants
@@ -208,4 +208,4 @@ write_constants_file
 write_mocks_file
 
 echo ""
-log "INFO" "🏁 Generación finalizada"
+log "INFO" "🏁 Generation finished"

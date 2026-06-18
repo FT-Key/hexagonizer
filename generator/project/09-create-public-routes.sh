@@ -15,18 +15,14 @@ main() {
 const router = express.Router();
 
 router.get("/", (req, res) => {
-  res.json({ message: "Bienvenido a la API pública" });
+  res.json({ message: "Welcome to the public API" });
 });
 
 export default router;
 '
-  log "SUCCESS" "Rutas públicas creadas"
+  log "SUCCESS" "Public routes created"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
-
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_PUBLIC_ROUTES:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

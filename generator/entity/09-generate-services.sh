@@ -211,14 +211,14 @@ generate_service() {
 
   # Validar que el generador existe
   if [[ -z "${SERVICE_GENERATORS[$service_type]:-}" ]]; then
-    log "ERROR" "Tipo de servicio no soportado: $service_type"
+    log "ERROR" "Unsupported service type: $service_type"
     return 1
   fi
 
   local service_file="$services_path/${service_type}-${entity}.js"
 
   # Confirmar sobrescritura si es necesario
-  if ! confirm_overwrite "$service_file" "servicio"; then
+  if ! confirm_overwrite "$service_file" "service"; then
     return 0
   fi
 
@@ -229,10 +229,10 @@ generate_service() {
 
   # Escribir el archivo
   if printf "%s\n" "$content" >"$service_file"; then
-    log "SUCCESS" "Generado: $service_file"
+    log "SUCCESS" "Generated: $service_file"
     return 0
   else
-    log "ERROR" "No se pudo escribir el archivo: $service_file"
+    log "ERROR" "Could not write file: $service_file"
     return 1
   fi
 }
@@ -245,7 +245,7 @@ create_services_structure() {
   local services_path="${SERVICES_BASE_PATH}/$entity/services"
   local readme_file="$services_path/README.md"
 
-  log "INFO" "Creando estructura de servicios para: $entity"
+  log "INFO" "Creating service structure for: $entity"
 
   # Crear directorio
   if ! ensure_directory "$services_path"; then
@@ -258,9 +258,9 @@ create_services_structure() {
     readme_content="$(generate_services_readme "$entity" "$entity_pascal")"
 
     if printf "%s\n" "$readme_content" >"$readme_file"; then
-      log "SUCCESS" "README generado: $readme_file"
+      log "SUCCESS" "README generated: $readme_file"
     else
-      log "ERROR" "No se pudo generar el README: $readme_file"
+      log "ERROR" "Could not generate README: $readme_file"
       return 1
     fi
   fi
@@ -282,14 +282,14 @@ generate_all_services() {
   # Crear estructura de servicios
   local services_path
   if ! services_path="$(create_services_structure "$entity" "$entity_pascal" | tail -n 1)"; then
-    log "ERROR" "No se pudo crear la estructura de servicios"
+    log "ERROR" "Could not create service structure"
     return 1
   fi
 
   local generated_count=0
   local failed_count=0
 
-  log "INFO" "Generando servicios: ${services[*]}"
+  log "INFO" "Generating services: ${services[*]}"
 
   # Generar cada servicio
   for service in "${services[@]}"; do
@@ -315,12 +315,12 @@ generate_all_services() {
 main() {
   # Verificar que las variables necesarias estén definidas
   if [[ -z "${entity:-}" ]] || [[ -z "${EntityPascal:-}" ]]; then
-    log "ERROR" "Las variables 'entity' y 'EntityPascal' deben estar definidas antes de ejecutar"
-    log "INFO" "Variables requeridas:"
-    log "INFO" "  - entity: nombre de la entidad en minúsculas (ej: 'user')"
-    log "INFO" "  - EntityPascal: nombre de la entidad en PascalCase (ej: 'User')"
-    log "INFO" "Variables opcionales:"
-    log "INFO" "  - AUTO_CONFIRM: confirmar automáticamente sobrescrituras (default: false)"
+    log "ERROR" "Variables 'entity' and 'EntityPascal' must be defined before running"
+    log "INFO" "Required variables:"
+    log "INFO" "  - entity: lowercase entity name (e.g. 'user')"
+    log "INFO" "  - EntityPascal: entity name in PascalCase (e.g. 'User')"
+    log "INFO" "Optional variables:"
+    log "INFO" "  - AUTO_CONFIRM: auto-confirm overwrites (default: false)"
     return 1
   fi
 
@@ -329,9 +329,9 @@ main() {
     return 1
   fi
 
-  log "INFO" "=== GENERADOR DE SERVICIOS ==="
-  log "INFO" "Entidad: $entity ($EntityPascal)"
-  log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
+  log "INFO" "=== SERVICE GENERATOR ==="
+  log "INFO" "Entity: $entity ($EntityPascal)"
+  log "INFO" "Auto-confirm: ${AUTO_CONFIRM:-false}"
   echo ""
 
   # Ejecutar generación
@@ -351,15 +351,15 @@ show_services_summary() {
   local success="$1"
 
   echo ""
-  log "INFO" "=== RESUMEN DE GENERACIÓN DE SERVICIOS ==="
+  log "INFO" "=== SERVICE GENERATION SUMMARY ==="
 
   if [[ "$success" == true ]]; then
-    log "SUCCESS" "✅ Servicios generados exitosamente"
-    log "INFO" "Ubicación: ${SERVICES_BASE_PATH}/$entity/services/"
+    log "SUCCESS" "✅ Services generated successfully"
+    log "INFO" "Location: ${SERVICES_BASE_PATH}/$entity/services/"
 
-    # Mostrar archivos generados
+    # Show generated files
     if [[ -d "${SERVICES_BASE_PATH}/$entity/services" ]]; then
-      log "INFO" "Archivos generados:"
+      log "INFO" "Generated files:"
       find "${SERVICES_BASE_PATH}/$entity/services" -name "*.js" -type f | while read -r file; do
         log "INFO" "  📄 $(basename "$file")"
       done
@@ -370,8 +370,8 @@ show_services_summary() {
       fi
     fi
   else
-    log "ERROR" "❌ La generación de servicios falló"
-    log "INFO" "Revisa los mensajes de error anteriores para más detalles"
+    log "ERROR" "❌ Service generation failed"
+    log "INFO" "Check previous error messages for details"
   fi
 
   echo ""

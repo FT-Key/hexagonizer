@@ -1,6 +1,6 @@
 #!/bin/bash
 # generator/common/io.sh
-# Funciones compartidas de I/O, validación y utilidades para todos los generadores
+# Shared I/O, validation and utility functions for all generators
 
 if [[ -z "${_IO_SH_SOURCED:-}" ]]; then
   readonly _IO_SH_SOURCED=true
@@ -18,11 +18,11 @@ if [[ -z "${_IO_SH_SOURCED:-}" ]]; then
   validate_entity() {
     local entity="$1"
     if [[ -z "$entity" ]]; then
-      log "ERROR" "El nombre de la entidad no puede estar vacío"
+      log "ERROR" "Entity name cannot be empty"
       return 1
     fi
     if [[ ! "$entity" =~ ^[a-zA-Z][a-zA-Z0-9_-]*$ ]]; then
-      log "ERROR" "El nombre de la entidad debe comenzar con una letra y contener solo letras, números, guiones y guiones bajos"
+      log "ERROR" "Entity name must start with a letter and contain only letters, numbers, hyphens, and underscores"
       return 1
     fi
     return 0
@@ -31,21 +31,21 @@ if [[ -z "${_IO_SH_SOURCED:-}" ]]; then
   ensure_directory() {
     local dir_path="$1"
     if ! mkdir -p "$dir_path" 2>/dev/null; then
-      log "ERROR" "No se pudo crear el directorio: $dir_path"
+      log "ERROR" "Could not create directory: $dir_path"
       return 1
     fi
   }
 
   confirm_overwrite() {
     local file_path="$1"
-    local file_type="${2:-archivo}"
+    local file_type="${2:-file}"
     local auto_confirm="${AUTO_CONFIRM:-false}"
 
     if [[ -e "$file_path" && "$auto_confirm" != "true" ]]; then
-      printf "${YELLOW}⚠️  El %s %s ya existe. ¿Deseas sobrescribirlo? [s/N]: ${NC}" "$file_type" "$file_path"
+      printf "${YELLOW}⚠️  %s %s already exists. Overwrite? [y/N]: ${NC}" "$file_type" "$file_path"
       read -r confirm
-      if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
-        log "INFO" "Omitido: $file_path"
+      if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        log "INFO" "Skipped: $file_path"
         return 1
       fi
     fi
@@ -58,10 +58,10 @@ if [[ -z "${_IO_SH_SOURCED:-}" ]]; then
 
     if confirm_overwrite "$file_path"; then
       if printf "%s\n" "$content" >"$file_path"; then
-        log "SUCCESS" "Generado: $file_path"
+        log "SUCCESS" "Generated: $file_path"
         return 0
       else
-        log "ERROR" "No se pudo escribir el archivo: $file_path"
+        log "ERROR" "Could not write file: $file_path"
         return 1
       fi
     fi

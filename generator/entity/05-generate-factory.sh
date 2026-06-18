@@ -13,7 +13,7 @@ source "$PROJECT_ROOT/generator/common/io.sh"
 factory_file="src/domain/$entity/${entity}-factory.js"
 
 write_factory_file() {
-  log "INFO" "Generando archivo de fábrica para $entity..."
+  log "INFO" "Generating factory file for $entity..."
   cat >"$factory_file" <<EOF
 import { $EntityPascal } from './$entity.js';
 import { validate${EntityPascal} } from './validate-$entity.js';
@@ -68,12 +68,12 @@ EOF
 # EJECUCIÓN PRINCIPAL
 # ==========================================
 
-log "INFO" "=== GENERADOR DE FACTORY ==="
-log "INFO" "Entidad: $entity ($EntityPascal)"
-log "INFO" "Auto-confirmación: ${AUTO_CONFIRM:-false}"
+log "INFO" "=== FACTORY GENERATOR ==="
+log "INFO" "Entity: $entity ($EntityPascal)"
+log "INFO" "Auto-confirm: ${AUTO_CONFIRM:-false}"
 echo ""
 
-if confirm_overwrite "$factory_file" "fábrica"; then
+if confirm_overwrite "$factory_file" "factory"; then
   write_factory_file
 fi
-log "SUCCESS" "✅ Fábrica generada: $factory_file"
+log "SUCCESS" "✅ Factory generated: $factory_file"

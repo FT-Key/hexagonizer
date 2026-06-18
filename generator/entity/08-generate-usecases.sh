@@ -3,101 +3,18 @@
 # shellcheck disable=SC2154
 set -euo pipefail
 
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
+
 # ==========================================
 # CONFIGURACIÓN Y CONSTANTES
 # ==========================================
-# Solo definir SCRIPT_DIR si no existe (para compatibilidad con otros módulos)
 if [[ -z "${SCRIPT_DIR:-}" ]]; then
   readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
 readonly USE_CASES_BASE_PATH="src/application"
 readonly DOMAIN_BASE_PATH="src/domain"
-
-# Colores para output (definir solo si no están definidos)
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-# ==========================================
-# FUNCIONES DE UTILIDAD
-# ==========================================
-
-# Función para logging con colores
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC} %s: %s\n" "$timestamp" "$message" >&2 ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s: %s\n" "$timestamp" "$message" ;;
-  esac
-}
-
-# Función mejorada para pluralización
-pluralize() {
-  local word="$1"
-
-  # Casos especiales en español e inglés
-  case "$word" in
-  *[aeiou]) echo "${word}s" ;;
-  *[zs]) echo "${word}es" ;;
-  *y) echo "${word%y}ies" ;;
-  *) echo "${word}s" ;;
-  esac
-}
-
-# Función para validar entrada
-validate_entity() {
-  local entity="$1"
-
-  if [[ -z "$entity" ]]; then
-    log "ERROR" "El nombre de la entidad no puede estar vacío"
-    return 1
-  fi
-
-  if [[ ! "$entity" =~ ^[a-zA-Z][a-zA-Z0-9_-]*$ ]]; then
-    log "ERROR" "El nombre de la entidad debe comenzar con una letra y contener solo letras, números, guiones y guiones bajos"
-    return 1
-  fi
-
-  return 0
-}
-
-# Función para confirmar sobrescritura
-confirm_overwrite() {
-  local file_path="$1"
-  local auto_confirm="${AUTO_CONFIRM:-false}"
-
-  if [[ -f "$file_path" && "$auto_confirm" != "true" ]]; then
-    printf "${YELLOW}⚠️  El archivo %s ya existe. ¿Deseas sobrescribirlo? [s/N]: ${NC}" "$file_path"
-    read -r confirm
-    if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
-      log "INFO" "Omitido: $file_path"
-      return 1
-    fi
-  fi
-  return 0
-}
-
-# Función para crear directorio de forma segura
-ensure_directory() {
-  local dir_path="$1"
-
-  if ! mkdir -p "$dir_path" 2>/dev/null; then
-    log "ERROR" "No se pudo crear el directorio: $dir_path"
-    return 1
-  fi
-}
 
 # ==========================================
 # GENERADORES DE CÓDIGO

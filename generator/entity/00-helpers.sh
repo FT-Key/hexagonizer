@@ -1,7 +1,11 @@
 #!/bin/bash
+# 00-helpers.sh
+# Mantenido para compatibilidad - prefiere usar io.sh directamente
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../common" && pwd)/io.sh"
+
 confirm_action() {
   local prompt="$1"
-  local result
   if $AUTO_CONFIRM; then
     result="y"
   else

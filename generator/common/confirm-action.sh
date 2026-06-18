@@ -1,10 +1,13 @@
 #!/bin/bash
 # common-functions.sh
+# Mantenido para compatibilidad backward - prefiere usar io.sh directamente
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/logging.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/io.sh"
 
 confirm_action() {
   local prompt="$1"
 
-  # Permitir AUTO_YES o AUTO_CONFIRM (prioridad a AUTO_YES)
   local auto_value="${AUTO_YES:-$AUTO_CONFIRM}"
 
   if [ "$auto_value" = true ]; then

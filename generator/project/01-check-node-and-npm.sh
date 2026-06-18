@@ -3,34 +3,7 @@
 
 set -e
 
-# ========================
-# COLORES PARA OUTPUT
-# ========================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly NC='\033[0m' # No Color
-fi
-
-# ========================
-# LOGGING FUNCTION
-# ========================
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
-  esac
-}
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../common/logging.sh"
 
 # ========================
 # PROJECT CONFIGURATION
@@ -48,21 +21,10 @@ readonly ENV_FILES=(".env" ".env.production")
 # PROJECT INITIALIZATION FUNCTIONS
 # ========================
 initialize_npm_project() {
-  log "INFO" "Verificando inicialización del proyecto npm"
-
   if [[ ! -f "package.json" ]]; then
-    log "INFO" "package.json no encontrado, inicializando proyecto"
-    if npm init -y >/dev/null 2>&1; then
-      log "SUCCESS" "Proyecto Node.js inicializado con npm init -y"
-    else
-      log "ERROR" "Error al inicializar proyecto npm"
-      return 1
-    fi
-  else
-    log "INFO" "package.json ya existe, continuando con instalación de dependencias"
+    npm init -y >/dev/null 2>&1 || { log "ERROR" "Error al inicializar proyecto npm"; return 1; }
+    log "SUCCESS" "Proyecto Node.js inicializado"
   fi
-
-  return 0
 }
 
 check_dependency_exists() {
@@ -82,81 +44,34 @@ check_dependency_exists() {
 }
 
 install_production_dependencies() {
-  log "INFO" "Verificando e instalando dependencias de producción"
-
-  local installed_count=0
-  local skipped_count=0
-
+  local installed=0
   for dep in "${PRODUCTION_DEPS[@]}"; do
-    if check_dependency_exists "$dep"; then
-      log "INFO" "Dependencia '$dep' ya instalada, omitiendo"
-      ((skipped_count++))
-    else
-      log "INFO" "Instalando dependencia de producción: $dep"
-      if npm install "$dep" >/dev/null 2>&1; then
-        log "SUCCESS" "Dependencia '$dep' instalada correctamente"
-        ((installed_count++))
-      else
-        log "ERROR" "Error instalando dependencia '$dep'"
-        return 1
-      fi
+    if ! check_dependency_exists "$dep"; then
+      npm install "$dep" >/dev/null 2>&1 || { log "ERROR" "Error instalando $dep"; return 1; }
+      ((installed++))
     fi
   done
-
-  log "SUCCESS" "Dependencias de producción procesadas (instaladas: $installed_count, omitidas: $skipped_count)"
-  return 0
+  log "SUCCESS" "Dependencias de producción instaladas ($installed nuevas)"
 }
-
 install_development_dependencies() {
-  log "INFO" "Verificando e instalando dependencias de desarrollo"
-
-  local installed_count=0
-  local skipped_count=0
-
+  local installed=0
   for dep in "${DEV_DEPS[@]}"; do
-    if check_dependency_exists "$dep"; then
-      log "INFO" "Dependencia de desarrollo '$dep' ya instalada, omitiendo"
-      ((skipped_count++))
-    else
-      log "INFO" "Instalando dependencia de desarrollo: $dep"
-      if npm install --save-dev "$dep" >/dev/null 2>&1; then
-        log "SUCCESS" "Dependencia de desarrollo '$dep' instalada correctamente"
-        ((installed_count++))
-      else
-        log "ERROR" "Error instalando dependencia de desarrollo '$dep'"
-        return 1
-      fi
+    if ! check_dependency_exists "$dep"; then
+      npm install --save-dev "$dep" >/dev/null 2>&1 || { log "ERROR" "Error instalando $dep"; return 1; }
+      ((installed++))
     fi
   done
-
-  log "SUCCESS" "Dependencias de desarrollo procesadas (instaladas: $installed_count, omitidas: $skipped_count)"
-  return 0
+  log "SUCCESS" "Dependencias de desarrollo instaladas ($installed nuevas)"
 }
-
 create_environment_files() {
-  log "INFO" "Creando archivos de configuración de entorno"
-
-  local created_count=0
-  local skipped_count=0
-
+  local created=0
   for env_file in "${ENV_FILES[@]}"; do
     if [[ ! -f "$env_file" ]]; then
-      log "INFO" "Creando archivo de entorno: $env_file"
-      if echo "# Variables de entorno para $(basename "$env_file" .env)" >"$env_file"; then
-        log "SUCCESS" "Archivo '$env_file' creado correctamente"
-        ((created_count++))
-      else
-        log "ERROR" "Error creando archivo '$env_file'"
-        return 1
-      fi
-    else
-      log "INFO" "Archivo '$env_file' ya existe, omitiendo"
-      ((skipped_count++))
+      echo "# Variables de entorno para $(basename "$env_file")" >"$env_file"
+      ((created++))
     fi
   done
-
-  log "SUCCESS" "Archivos de entorno procesados (creados: $created_count, omitidos: $skipped_count)"
-  return 0
+  log "SUCCESS" "Archivos de entorno creados ($created nuevos)"
 }
 
 update_package_json_configuration() {
@@ -234,49 +149,21 @@ try {
 }
 
 verify_node_version_compatibility() {
-  log "INFO" "Verificando compatibilidad de versión Node.js"
-
-  # Obtener versión local
   local local_version
   local_version=$(node -v 2>/dev/null | sed 's/v//' || echo "unknown")
+  [[ "$local_version" == "unknown" ]] && return 0
 
-  if [[ "$local_version" == "unknown" ]]; then
-    log "ERROR" "No se pudo obtener la versión de Node.js"
-    return 1
+  log "INFO" "Node.js v$local_version detectado"
+
+  if command -v jq &>/dev/null; then
+    local latest_version
+    latest_version=$(timeout 10s curl -s https://nodejs.org/dist/index.json 2>/dev/null |
+      jq -r '[.[] | select(.lts != false)][0].version' 2>/dev/null |
+      sed 's/v//' || echo "")
+    if [[ -n "$latest_version" && "$local_version" != "$latest_version" ]]; then
+      log "WARN" "Node $local_version no es la última LTS ($latest_version) — actualiza si hay problemas"
+    fi
   fi
-
-  log "INFO" "Versión actual de Node.js: v$local_version"
-
-  # Verificar si jq está disponible para comparar con LTS
-  if ! command -v jq &>/dev/null; then
-    log "WARN" "jq no está disponible, omitiendo verificación de versión LTS"
-    log "INFO" "Para verificar versiones LTS, instala jq: apt install jq (Ubuntu/Debian) o brew install jq (macOS)"
-    return 0
-  fi
-
-  log "INFO" "Consultando última versión LTS de Node.js"
-
-  # Obtener versión LTS con timeout
-  local latest_version
-  latest_version=$(timeout 10s curl -s https://nodejs.org/dist/index.json 2>/dev/null |
-    jq -r '[.[] | select(.lts != false)][0].version' 2>/dev/null |
-    sed 's/v//' || echo "")
-
-  if [[ -z "$latest_version" ]]; then
-    log "WARN" "No se pudo obtener información de versión LTS (posible problema de conectividad)"
-    return 0
-  fi
-
-  log "INFO" "Última versión LTS disponible: v$latest_version"
-
-  if [[ "$local_version" != "$latest_version" ]]; then
-    log "WARN" "Tu versión ($local_version) difiere de la LTS actual ($latest_version)"
-    log "INFO" "Considera actualizar si encuentras problemas de compatibilidad"
-  else
-    log "SUCCESS" "Estás usando la última versión LTS de Node.js"
-  fi
-
-  return 0
 }
 
 show_help() {
@@ -311,56 +198,13 @@ EOF
 # MAIN FUNCTION
 # ========================
 main() {
-  log "INFO" "=== CONFIGURACIÓN DE PROYECTO NODE.JS ==="
-
-  # Verificar argumentos de ayuda
-  for arg in "$@"; do
-    if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
-      show_help
-      return 0
-    fi
-  done
-
-  local start_time
-  start_time=$(date +%s)
-
-  # Ejecutar configuración paso a paso
-  initialize_npm_project || {
-    log "ERROR" "Error inicializando proyecto npm"
-    return 1
-  }
-
-  install_production_dependencies || {
-    log "ERROR" "Error instalando dependencias de producción"
-    return 1
-  }
-
-  install_development_dependencies || {
-    log "ERROR" "Error instalando dependencias de desarrollo"
-    return 1
-  }
-
-  create_environment_files || {
-    log "ERROR" "Error creando archivos de entorno"
-    return 1
-  }
-
-  update_package_json_configuration || {
-    log "ERROR" "Error actualizando configuración de package.json"
-    return 1
-  }
-
-  verify_node_version_compatibility || {
-    log "WARN" "Advertencias en verificación de versión Node.js (no crítico)"
-  }
-
-  local end_time
-  end_time=$(date +%s)
-  local duration=$((end_time - start_time))
-
-  log "SUCCESS" "=== CONFIGURACIÓN DE PROYECTO COMPLETADA ==="
-  log "SUCCESS" "Tiempo total: ${duration}s"
-  log "INFO" "El proyecto está listo para desarrollo con 'npm run dev'"
+  initialize_npm_project || return 1
+  install_production_dependencies || return 1
+  install_development_dependencies || return 1
+  create_environment_files || return 1
+  update_package_json_configuration || return 1
+  verify_node_version_compatibility
+  log "SUCCESS" "Proyecto Node.js configurado — ejecuta 'npm run dev'"
 }
 
 # ========================

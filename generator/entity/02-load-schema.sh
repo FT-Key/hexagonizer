@@ -3,38 +3,8 @@
 # shellcheck disable=SC2034,SC2154
 set -e
 
-# ========================
-# COLORES PARA OUTPUT
-# ========================
-if [[ -z "${RED:-}" ]]; then
-  readonly RED='\033[0;31m'
-  readonly GREEN='\033[0;32m'
-  readonly YELLOW='\033[1;33m'
-  readonly BLUE='\033[0;34m'
-  readonly CYAN='\033[0;36m'
-  readonly MAGENTA='\033[0;35m'
-  readonly NC='\033[0m' # No Color
-fi
-
-# ========================
-# LOGGING FUNCTION
-# ========================
-log() {
-  local level="$1"
-  shift
-  local message="$*"
-  local timestamp
-  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-  case "$level" in
-  "INFO") printf "${BLUE}[INFO]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "SUCCESS") printf "${GREEN}[SUCCESS]${NC} %s - %s\n" "$timestamp" "$message" ;;
-  "WARN") printf "${YELLOW}[WARN]${NC}    %s - %s\n" "$timestamp" "$message" ;;
-  "ERROR") printf "${RED}[ERROR]${NC}   %s - %s\n" "$timestamp" "$message" >&2 ;;
-  "INPUT") printf "${CYAN}[INPUT]${NC}   %s - %s\n" "$timestamp" "$message" ;;
-  "DEBUG") printf "${MAGENTA}[DEBUG]${NC}   %s - %s\n" "$timestamp" "$message" ;;
-  esac
-}
+source "$PROJECT_ROOT/generator/common/logging.sh"
+source "$PROJECT_ROOT/generator/common/io.sh"
 
 # ========================
 # CONFIGURATION

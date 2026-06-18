@@ -1,6 +1,6 @@
 {
   "name": "hexagonizer",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "CLI para generar proyectos y entidades hexagonales en Node.js",
   "bin": {
     "hexagonizer": "./bin/hexagon.mjs"

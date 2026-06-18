@@ -1,18 +1,44 @@
-# 🧱 Hexagonizer
+# Hexagonizer
 
-**Hexagonizer** es una herramienta de línea de comandos (CLI) para generar proyectos Node.js con **arquitectura hexagonal limpia**, organizados en capas como dominio, infraestructura, interfaces HTTP, casos de uso y pruebas automatizadas.
+CLI tool for scaffolding Node.js projects with a clean **hexagonal architecture** — domain, application, infrastructure, HTTP interfaces, and automated tests.
 
-> 🚧 **Work in Progress (WIP)** – El proyecto está en desarrollo activo. Algunas funciones están completas y otras en construcción.
+> **Work in Progress** — Active development. Some features are complete, others are under construction.
 
 ---
 
-## 📦 Instalación
+## Overview
+
+Hexagonizer generates a ready-to-use Node.js project structured around domain-driven principles. It provides an interactive CLI (built with [Inquirer](https://github.com/SBoudrias/Inquirer.js)) and styled terminal output (using [Chalk](https://github.com/chalk/chalk)).
+
+### What it does
+
+- **Initializes a base project** with:
+  - Hexagonal folder structure
+  - Preconfigured Express server
+  - Common middlewares (`auth`, `checkRole`, `rateLimiter`, etc.)
+  - Auto-wired routes and controllers
+  - Simple welcome frontend (`index.html`)
+
+- **Generates complete entities** ready to use:
+  - Domain class with base fields (`id`, `active`, `createdAt`, etc.)
+  - In-Memory repository
+  - Use cases (`create`, `update`, `get`, `delete`, `deactivate`)
+  - Dynamic validations based on attributes
+  - Full unit tests
+  - Filter, sort, and search configuration (`queryConfig`)
+  - Routes and middlewares integrated into the server
+
+- **Supports entity generation from JSON schema** (partial)
+
+---
+
+## Installation
 
 ```bash
 npm install -g hexagonizer
 ```
 
-Esto instalará el comando global:
+This installs the global command:
 
 ```bash
 hexagonizer
@@ -20,78 +46,50 @@ hexagonizer
 
 ---
 
-## 🚀 ¿Qué hace Hexagonizer?
+## Usage
 
-- ⚙️ **Inicializa un proyecto base** con:
-
-  - Estructura hexagonal lista para trabajar
-  - Servidor Express preconfigurado
-  - Middlewares comunes (`auth`, `checkRole`, `rateLimiter`, etc.)
-  - Rutas y controladores conectados automáticamente
-  - Frontend simple (`index.html`) de bienvenida
-
-- 🧱 **Genera entidades completas**, listas para usar:
-
-  - Clase de dominio con campos base (`id`, `active`, `createdAt`, etc.)
-  - Repositorio In-Memory
-  - Casos de uso (`create`, `update`, `get`, `delete`, `deactivate`)
-  - Validaciones dinámicas según los atributos
-  - Pruebas unitarias completas
-  - Configuración de filtros, orden y búsqueda (`queryConfig`)
-  - Rutas + middlewares integrados al servidor
-
-- 🔁 **Soporte para entidades desde JSON schema personalizado** (en desarrollo)
-
----
-
-## 🧪 Cómo usar
-
-### 1. Iniciar un nuevo proyecto
+### Initialize a new project
 
 ```bash
 hexagonizer
 ```
 
-> Luego seleccioná la opción **"Init project"** y seguí las instrucciones del asistente interactivo.
+Select **"Init project"** and follow the interactive prompts.
 
----
-
-### 2. Generar una entidad genérica
+### Generate a generic entity
 
 ```bash
 hexagonizer
 ```
 
-> Elegí **"Generate entity"** y escribí el nombre (por ejemplo `user`).
+Select **"Generate entity"** and enter a name (e.g., `user`).
 
-Esto creará:
+This creates the following structure:
 
 ```
-📁 src/
-  └── domain/user/User.js
-  └── application/user/
-  └── infrastructure/user/
-  └── interfaces/http/user/
-📁 tests/application/user/
+src/
+  domain/user/User.js
+  application/user/
+  infrastructure/user/
+  interfaces/http/user/
+tests/application/user/
 ```
 
-Todo enlazado automáticamente con el servidor y middlewares.
+Everything is wired automatically to the server and middlewares.
 
----
-
-### 3. (WIP) Generar entidad desde JSON
+### Generate entity from JSON schema (WIP)
 
 ```bash
 hexagonizer
 ```
 
-> Luego elegí la opción **"Generate entity from JSON schema"** y proporciona el archivo.
+Select **"Generate entity from JSON schema"** and provide the file path.
 
-> ⚠️ Aún está en desarrollo. Genera algunos archivos, pero puede requerir ajustes manuales.
+> Note: This feature is still in development. Some generated files may require manual adjustments.
 
 ---
 
-## 📁 Estructura generada
+## Generated project structure
 
 ```
 hexagon-project/
@@ -112,28 +110,38 @@ hexagon-project/
 
 ---
 
-## 🔍 Estado actual
+## Built with
 
-| Funcionalidad                      | Estado          |
-| ---------------------------------- | --------------- |
-| CLI interactivo                    | ✅ Completo     |
-| Init de proyecto base              | ✅ Completo     |
-| Generar entidad genérica           | ✅ Completo     |
-| Validaciones dinámicas             | ✅ Completo     |
-| Middlewares de consulta (`q`, etc) | ✅ Completo     |
-| Tests automáticos por entidad      | ✅ Completo     |
-| Generación desde JSON schema       | 🚧 Parcial      |
-| Modularización vía scripts         | ✅ Completo     |
-| Instalación global via npm         | ✅ Desde v1.1.0 |
+| Dependency | Purpose |
+|---|---|
+| [Inquirer](https://github.com/SBoudrias/Inquirer.js) | Interactive CLI prompts and menus |
+| [Chalk](https://github.com/chalk/chalk) | Terminal text styling and colors |
+| [Express](https://expressjs.com) | HTTP server (generated projects) |
 
 ---
 
-## 📣 Contribuciones
+## Feature status
 
-Este proyecto está en constante evolución. Si querés ayudar, proponer ideas o reportar errores, ¡sos bienvenido!
+| Feature | Status |
+|---|---|
+| Interactive CLI | Complete |
+| Base project initialization | Complete |
+| Generic entity generation | Complete |
+| Dynamic validations | Complete |
+| Query middlewares (`q`, etc.) | Complete |
+| Automated tests per entity | Complete |
+| JSON schema entity generation | Partial |
+| Script modularization | Complete |
+| Global npm installation | Complete (v1.1.0+) |
 
 ---
 
-## 🧾 Licencia
+## Contributing
 
-MIT © 2025 — Franco Toledo
+Contributions, ideas, and bug reports are welcome. Open an issue or submit a pull request.
+
+---
+
+## License
+
+MIT — 2025 Franco Toledo

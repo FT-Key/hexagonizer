@@ -26,7 +26,3 @@ export default router;
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
-
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_HEALTH_ROUTES:-}" || $# -gt 0) ]]; then
-  main "$@"
-fi

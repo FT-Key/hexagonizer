@@ -10,30 +10,32 @@ parse_arguments() {
   if [[ -n "${INIT_ARGS:-}" ]]; then
     args_to_parse=("${INIT_ARGS[@]}")
   fi
-  AUTO_YES=false
+  AUTO_YES=${AUTO_YES:-false}
+  CREATE_MIDDLEWARES=${CREATE_MIDDLEWARES:-}
+  SETUP_DOCKER=${SETUP_DOCKER:-}
   for arg in "${args_to_parse[@]}"; do
     case "$arg" in
-      -y|--yes) AUTO_YES=true; break;;
+      -y|--yes) AUTO_YES=true;;
+      --middlewares) CREATE_MIDDLEWARES=true;;
+      --docker) SETUP_DOCKER=true;;
       -h|--help) show_help; return 0;;
     esac
   done
-  export AUTO_YES
+  export AUTO_YES CREATE_MIDDLEWARES SETUP_DOCKER
 }
 
 show_help() {
   cat <<EOF
-Uso: $0 [OPCIONES]
+Usage: $0 [OPTIONS]
 
-OPCIONES:
-  -y, --yes    Modo automático
-  -h, --help   Muestra esta ayuda
+OPTIONS:
+  -y, --yes         Automatic mode
+  --middlewares     Add base middlewares
+  --docker          Configure Docker
+  -h, --help        Show this help
 EOF
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  parse_arguments "$@"
-fi
-
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${INIT_ARGS:-}" || $# -gt 0) ]]; then
   parse_arguments "$@"
 fi

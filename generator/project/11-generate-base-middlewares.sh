@@ -13,7 +13,7 @@ init_environment() {
   PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
   if [ "$CREATE_MIDDLEWARES" != "true" ]; then
-    log "WARN" "CREATE_MIDDLEWARES no está habilitado, saltando generación de middlewares"
+    log "WARN" "CREATE_MIDDLEWARES not enabled, skipping middleware generation"
     return 2
   fi
 }
@@ -32,7 +32,7 @@ write_file() {
   local filepath="$1"
   local content="$2"
   [ -f "$filepath" ] && return 0
-  echo "$content" >"$filepath" || { log "ERROR" "Error escribiendo $(basename "$filepath")"; return 1; }
+  echo "$content" >"$filepath" || { log "ERROR" "Error writing $(basename "$filepath")"; return 1; }
 }
 
 # ========================
@@ -56,7 +56,7 @@ main() {
   try {
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Token inválido o expirado" });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 }'
 
@@ -94,7 +94,7 @@ export function checkRoleOrOwner(requiredRole) {
 export const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: "Demasiadas solicitudes desde esta IP, intentá más tarde",
+  message: "Too many requests from this IP, try again later",
   standardHeaders: true,
   legacyHeaders: false,
 });'
@@ -125,12 +125,6 @@ export const sanitizeMiddleware = [
 # ========================
 # EXECUTION LOGIC
 # ========================
-# Si se llama directamente con bash
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
-
-# Si se hace source y hay condiciones específicas
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_MIDDLEWARES:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

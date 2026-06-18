@@ -49,7 +49,3 @@ server.start(process.env.PORT || 3000);
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
-
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_INDEX:-}" || $# -gt 0) ]]; then
-  main "$@"
-fi

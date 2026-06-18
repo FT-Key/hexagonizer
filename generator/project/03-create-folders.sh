@@ -8,7 +8,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../common/logging.sh"
 # ========================
 # PROJECT STRUCTURE CONFIGURATION
 # ========================
-# Estructura de directorios del proyecto hexagonal
+# Hexagonal project directory structure
 readonly PROJECT_DIRECTORIES=(
   "src/config"
   "src/domain"
@@ -44,7 +44,7 @@ create_base_directories() {
   for dir in "${PROJECT_DIRECTORIES[@]}"; do
     mkdir -p "$dir"
   done
-  log "SUCCESS" "Directorios base creados"
+  log "SUCCESS" "Base directories created"
 }
 
 create_optional_directories() {
@@ -52,7 +52,7 @@ create_optional_directories() {
   for dir in "${OPTIONAL_DIRECTORIES[@]}"; do
     mkdir -p "$dir"
   done
-  log "SUCCESS" "Directorios opcionales creados"
+  log "SUCCESS" "Optional directories created"
 }
 
 create_gitkeep_files() {
@@ -64,29 +64,29 @@ create_gitkeep_files() {
 
 show_help() {
   cat <<EOF
-Uso: $0 [OPCIONES]
+Usage: $0 [OPTIONS]
 
-OPCIONES:
-  --optional       Crear también directorios opcionales
-  -h, --help       Muestra esta ayuda
+OPTIONS:
+  --optional       Also create optional directories
+  -h, --help       Show this help
 
-DESCRIPCIÓN:
-  Este script crea la estructura de directorios base para un proyecto
-  con arquitectura hexagonal.
+DESCRIPTION:
+  This script creates the base directory structure for a project
+  with hexagonal architecture.
 
-DIRECTORIOS BASE (${#PROJECT_DIRECTORIES[@]}):
+BASE DIRECTORIES (${#PROJECT_DIRECTORIES[@]}):
 $(printf "  %s\n" "${PROJECT_DIRECTORIES[@]}")
 
-DIRECTORIOS OPCIONALES (${#OPTIONAL_DIRECTORIES[@]}):
+OPTIONAL DIRECTORIES (${#OPTIONAL_DIRECTORIES[@]}):
 $(printf "  %s\n" "${OPTIONAL_DIRECTORIES[@]}")
 
-VARIABLES DE ENTORNO:
-  CREATE_OPTIONAL_DIRS=true    Crear directorios opcionales
+ENVIRONMENT VARIABLES:
+  CREATE_OPTIONAL_DIRS=true    Create optional directories
 
-EJEMPLO:
-  $0                    # Solo directorios base
-  $0 --optional         # Base + opcionales
-  CREATE_OPTIONAL_DIRS=true $0  # Base + opcionales
+EXAMPLE:
+  $0                    # Base directories only
+  $0 --optional         # Base + optional
+  CREATE_OPTIONAL_DIRS=true $0  # Base + optional
 EOF
 }
 
@@ -106,12 +106,6 @@ main() {
 # ========================
 # EXECUTION LOGIC
 # ========================
-# Si se llama directamente con bash
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
-
-# Si se hace source y hay condiciones específicas
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_MIDDLEWARES:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

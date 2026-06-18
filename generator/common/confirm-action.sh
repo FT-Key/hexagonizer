@@ -1,6 +1,6 @@
 #!/bin/bash
 # common-functions.sh
-# Mantenido para compatibilidad backward - prefiere usar io.sh directamente
+# Kept for backward compatibility - prefer using io.sh directly
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/logging.sh"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/io.sh"
@@ -11,7 +11,6 @@ confirm_action() {
   local auto_value="${AUTO_YES:-$AUTO_CONFIRM}"
 
   if [ "$auto_value" = true ]; then
-    echo "✔️ Auto confirmación activada, se asume Sí para: $prompt"
     return 0
   fi
 
@@ -20,7 +19,7 @@ confirm_action() {
     case "$response" in
     [yY]) return 0 ;;
     [nN] | "") return 1 ;;
-    *) echo "Por favor ingrese 'y' o 'n'." ;;
+    *) echo "Please enter 'y' or 'n'." ;;
     esac
   done
 }
@@ -31,13 +30,13 @@ write_file_with_confirm() {
 
   if [[ -f "$filepath" ]]; then
     if [[ "$AUTO_YES" == true ]]; then
-      echo "⚠️  El archivo $filepath ya existe. Sobrescribiendo por opción -y."
+      echo "⚠️  File $filepath already exists. Overwriting due to -y flag."
       echo "$content" >"$filepath"
     else
-      if confirm_action "⚠️  El archivo $filepath ya existe. ¿Desea sobrescribirlo? (y/n): "; then
+      if confirm_action "⚠️  File $filepath already exists. Do you want to overwrite it? (y/n): "; then
         echo "$content" >"$filepath"
       else
-        echo "❌ No se sobrescribió $filepath"
+        echo "❌ Did not overwrite $filepath"
         return 1
       fi
     fi

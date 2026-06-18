@@ -31,7 +31,7 @@ check_existing_docker_files() {
 
   if [[ ${#existing[@]} -gt 0 ]]; then
     if [[ "$AUTO_YES" != true ]]; then
-      confirm_action "Ya existe configuración Docker. ¿Sobrescribir? (y/n): " || { SHOULD_CREATE_DOCKER=false; return 0; }
+      confirm_action "Docker configuration already exists. Overwrite? (y/n): " || { SHOULD_CREATE_DOCKER=false; return 0; }
     fi
   fi
   SHOULD_CREATE_DOCKER=true
@@ -90,7 +90,7 @@ create_docker_files() {
   generate_dockerfile_content > "./Dockerfile"
   generate_docker_compose_content > "./docker-compose.yml"
   generate_dockerignore_content > "./.dockerignore"
-  log "SUCCESS" "Archivos Docker creados"
+  log "SUCCESS" "Docker files created"
 }
 
 # ========================
@@ -104,18 +104,12 @@ main() {
   [[ "$SHOULD_CREATE_DOCKER" != true ]] && exit 0
 
   create_docker_files
-  log "SUCCESS" "Configuración Docker generada"
+  log "SUCCESS" "Docker configuration generated"
 }
 
 # ========================
 # EXECUTION LOGIC
 # ========================
-# Si se llama directamente con bash
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
-
-# Si se hace source y hay condiciones específicas
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${SETUP_DOCKER:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

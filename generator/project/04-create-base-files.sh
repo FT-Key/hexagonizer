@@ -8,7 +8,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../common/logging.sh"
 # ========================
 # FILE CONFIGURATION
 # ========================
-# Archivos base requeridos del proyecto
+# Required project base files
 readonly BASE_FILES=(
   ".gitignore"
   ".gitattributes"
@@ -16,7 +16,7 @@ readonly BASE_FILES=(
   "README.md"
 )
 
-# Archivos opcionales que pueden crearse
+# Optional files that can be created
 readonly OPTIONAL_FILES=(
   ".eslintrc.json"
   ".env.example"
@@ -208,7 +208,7 @@ create_base_files() {
       echo "$content" >"$file"
     fi
   done
-  log "SUCCESS" "Archivos base creados"
+  log "SUCCESS" "Base files created"
 }
 
 create_optional_files() {
@@ -221,40 +221,40 @@ create_optional_files() {
       ".eslintrc.json") content='{"extends": ["eslint:recommended"], "env": {"node": true, "es2022": true}, "parserOptions": {"ecmaVersion": 2022, "sourceType": "module"}}' ;;
       ".env.example") content="# Ejemplo de variables de entorno\nPORT=3000\nNODE_ENV=development" ;;
       "CHANGELOG.md") content="# Changelog\n\n## [1.0.0] - $(date +%Y-%m-%d)\n\n### Added\n- Proyecto inicial generado" ;;
-      "CONTRIBUTING.md") content="# Guía de Contribución\n\n## Cómo Contribuir\n\n1. Fork el proyecto\n2. Crea tu rama de feature\n3. Realiza tus cambios\n4. Envía un pull request" ;;
+      "CONTRIBUTING.md") content="# Contribution Guide\n\n## How to Contribute\n\n1. Fork the project\n2. Create your feature branch\n3. Make your changes\n4. Submit a pull request" ;;
       "LICENSE") content="MIT License\n\nCopyright (c) $(date +%Y)" ;;
       esac
       echo -e "$content" >"$file"
     fi
   done
-  log "SUCCESS" "Archivos opcionales creados"
+  log "SUCCESS" "Optional files created"
 }
 
 show_help() {
   cat <<EOF
-Uso: $0 [OPCIONES]
+Usage: $0 [OPTIONS]
 
-OPCIONES:
-  --optional       Crear también archivos opcionales
-  -h, --help       Muestra esta ayuda
+OPTIONS:
+  --optional       Also create optional files
+  -h, --help       Show this help
 
-DESCRIPCIÓN:
-  Este script crea los archivos base necesarios para un proyecto Node.js
-  con configuraciones estándar.
+DESCRIPTION:
+  This script creates the base files needed for a Node.js project
+  with standard settings.
 
-ARCHIVOS BASE (${#BASE_FILES[@]}):
+BASE FILES (${#BASE_FILES[@]}):
 $(printf "  %s\n" "${BASE_FILES[@]}")
 
-ARCHIVOS OPCIONALES (${#OPTIONAL_FILES[@]}):
+OPTIONAL FILES (${#OPTIONAL_FILES[@]}):
 $(printf "  %s\n" "${OPTIONAL_FILES[@]}")
 
-VARIABLES DE ENTORNO:
-  CREATE_OPTIONAL_FILES=true    Crear archivos opcionales
+ENVIRONMENT VARIABLES:
+  CREATE_OPTIONAL_FILES=true    Create optional files
 
-EJEMPLO:
-  $0                        # Solo archivos base
-  $0 --optional             # Base + opcionales
-  CREATE_OPTIONAL_FILES=true $0  # Base + opcionales
+EXAMPLE:
+  $0                        # Base files only
+  $0 --optional             # Base + optional
+  CREATE_OPTIONAL_FILES=true $0  # Base + optional
 EOF
 }
 
@@ -273,12 +273,6 @@ main() {
 # ========================
 # EXECUTION LOGIC
 # ========================
-# Si se llama directamente con bash
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-fi
-
-# Si se hace source y hay condiciones específicas
-if [[ "${BASH_SOURCE[0]}" != "${0}" && (-n "${CREATE_MIDDLEWARES:-}" || $# -gt 0) ]]; then
   main "$@"
 fi

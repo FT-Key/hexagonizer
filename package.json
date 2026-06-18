@@ -5,6 +5,12 @@
   "bin": {
     "hexagonizer": "./bin/hexagon"
   },
+  "files": [
+    "bin/",
+    "generator/",
+    "scripts/",
+    "README.md"
+  ],
   "keywords": [
     "cli",
     "hexagon",

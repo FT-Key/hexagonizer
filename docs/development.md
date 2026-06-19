@@ -11,7 +11,7 @@ Guia para contribuir al desarrollo del CLI hexagonizer.
 ## Estructura del proyecto
 
 ```
-bin/hexagon              # Entry point del CLI (menu interactivo)
+bin/hexagonizer          # Entry point del CLI (menu interactivo)
 scripts/
   init-project.sh        # Orquestador de generacion de proyectos
   entity-generator.sh    # Orquestador de generacion de entidades
@@ -55,7 +55,7 @@ generator/
 
 ```bash
 # Ejecutar el CLI localmente
-node bin/hexagon
+node bin/hexagonizer
 
 # O directamente los generadores
 bash scripts/init-project.sh -y

@@ -1,46 +1,36 @@
 # Workflow State
 
 ## Current US
-- **ID**: US-002
+- **ID**: US-003
 - **Status**: Done
-- **Phase**: 4 — Finalize
-- **Detail**: CLI interactiva con inquirer + chalk
+- **Phase**: 5 — Finalize
+- **Detail**: Modo headless para IAs (init + entity via CLI flags)
 
 ## History
 | US | Status | Branch | Detail |
 |----|--------|--------|--------|
 | US-002 | Done | — | Mejorar interfaz CLI con interactividad inquirer + chalk |
-
-## Files created
-| File | Purpose |
-|------|---------|
-| `cli/index.js` | Orchestrator: main loop, showStats |
-| `cli/styles.js` | Visual theme: banner, section, divider with chalk |
-| `cli/runner.js` | Spawn Bash scripts with env vars, return boolean |
-| `cli/main-menu.js` | Main menu: inquirer list with arrow keys |
-| `cli/project-init.js` | Init prompts: name, middlewares, docker |
-| `cli/entity-prompt.js` | Entity prompts: name + mode selection |
-| `cli/server-menu.js` | Server menu: npm/docker commands |
+| US-003 | Done | — | Modo headless: `hexagonizer init <name>`, `hexagonizer entity <name>` |
 
 ## Files modified
 | File | Change |
 |------|--------|
-| `package.json` | +chalk ^5.4.1, +inquirer ^12.3.0, version 1.2.0 |
-| `bin/hexagon` | Rewritten as Node.js ESM shebang |
-| `scripts/init-project.sh` | `setup_middlewares_config` respects pre-set vars |
-| `generator/project/00-parse-args.sh` | +`--middlewares`, +`--docker` flags; `AUTO_YES` respeta env |
-| `generator/entity/01-parse-args.sh` | Accepted first positional arg as entity name; `AUTO_CONFIRM` respeta env |
-| `generator/entity/02-load-schema.sh` | `create_default_schema()` skips prompt if `ENTITY_NAME` pre-set |
-| `generator/entity/00-helpers.sh` | Now delegates to common `confirm-action.sh` |
-| `generator/common/confirm-action.sh` | Silenced redundant "Auto confirmacion" log line |
+| `bin/hexagon.mjs` | Parseo de args: `init`, `entity`, `--help` → dispatch headless o interactivo |
+| `cli/index.js` | +`showHelp()`, +`headlessInit()`, +`headlessEntity()`, +`slugify()` |
+| `cli/runner.js` | `runScript()` y `safeRun()` ahora aceptan `options.cwd` |
+| `docs/cli-reference.md` | Documentado modo headless con ejemplos para IAs |
 
 ## Quality gates results
-- **Code review**: 1 blocker, 3 high, 3 medium issues found → all fixed
-- **Syntax checks**: All Node.js files pass `node --check`
-- **CLI starts**: Verified `node bin/hexagon` launches correctly
+- **Syntax checks**: `node --check` pasa en bin/hexagon.mjs, cli/index.js, cli/runner.js
+- **CLI --help**: Funciona correctamente
+- **Error handling**: `init` sin nombre y `entity` sin nombre muestran error + uso
+- **Comando desconocido**: Muestra help y sale con codigo 1
+- **Backward compatible**: Sin args → menu interactivo (sin cambios)
 
 ## Design decisions
-- Hybrid approach: Node.js (inquirer + chalk) for interaction, Bash for generation logic
-- Environment vars (`AUTO_YES`, `CREATE_MIDDLEWARES`, `SETUP_DOCKER`) bridge Node.js → Bash
-- Backward compatible: Bash scripts still work standalone without Node.js
-- Border-only Unicode design (no emojis), professional color palette
+- Sin args → mismo comportamiento interactivo (100% backward compatible)
+- `init <name>` crea directorio y ejecuta scripts dentro
+- `entity <name>` ejecuta en el directorio actual (como el menu interactivo)
+- Reutiliza `safeRun()`/`runScript()` existente — sin duplicacion
+- `--help` usa theme de styles.js para consistencia visual
+- Los Bash scripts ya soportaban headless via env vars; solo se agrego capa Node.js

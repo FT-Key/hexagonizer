@@ -125,6 +125,118 @@ export async function main() {
   }
 }
 
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export function showHelp() {
+  banner();
+  console.log(theme.white.bold('USAGE'));
+  console.log('');
+  console.log(`  ${theme.info('hexagonizer')}                          Interactive menu`);
+  console.log(`  ${theme.info('hexagonizer init <name>')}               Initialize a project`);
+  console.log(`  ${theme.info('hexagonizer entity <name>')}             Generate an entity`);
+  console.log(`  ${theme.info('hexagonizer --help')}                    Show this help`);
+  console.log('');
+  console.log(theme.white.bold('INIT FLAGS'));
+  console.log(`  ${theme.highlight('--middlewares')}       Add base middlewares (auth, roles, error handler)`);
+  console.log(`  ${theme.highlight('--docker')}            Configure Docker`);
+  console.log(`  ${theme.highlight('-y, --yes')}           Auto-confirm all`);
+  console.log('');
+  console.log(theme.white.bold('ENTITY FLAGS'));
+  console.log(`  ${theme.highlight('-y, --yes')}           Auto-confirm all`);
+  console.log(`  ${theme.highlight('--json [path]')}       Load fields from JSON schema file`);
+  console.log('');
+  console.log(theme.white.bold('EXAMPLES'));
+  console.log(`  ${theme.muted('# Initialize a project with middlewares and docker')}`);
+  console.log(`  hexagonizer init my-api --middlewares --docker`);
+  console.log('');
+  console.log(`  ${theme.muted('# Generate an entity in quick mode')}`);
+  console.log(`  hexagonizer entity user -y`);
+  console.log('');
+  console.log(`  ${theme.muted('# Generate an entity from JSON schema')}`);
+  console.log(`  hexagonizer entity product --json ./product-schema.json`);
+  divider();
+}
+
+export async function headlessInit(args) {
+  const projectName = args[0];
+  if (!projectName) {
+    console.error(theme.error('Error: project name is required'));
+    console.error(`Usage: hexagonizer init <name> [--middlewares] [--docker]`);
+    process.exit(1);
+  }
+
+  const sanitized = slugify(projectName);
+  const scriptArgs = [];
+  const env = { AUTO_YES: 'true' };
+
+  for (let i = 1; i < args.length; i++) {
+    switch (args[i]) {
+      case '--middlewares':
+        env.CREATE_MIDDLEWARES = 'true';
+        scriptArgs.push('--middlewares');
+        break;
+      case '--docker':
+        env.SETUP_DOCKER = 'true';
+        scriptArgs.push('--docker');
+        break;
+      case '-y':
+      case '--yes':
+        env.AUTO_YES = 'true';
+        break;
+    }
+  }
+
+  const targetDir = path.resolve(process.cwd(), sanitized);
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+
+  banner();
+  console.log(theme.info(`Initializing project "${sanitized}"...\n`));
+
+  const ok = await safeRun('scripts/init-project.sh', scriptArgs, env, { cwd: targetDir });
+  if (!ok) {
+    console.error(theme.error('Project initialization failed.'));
+    process.exit(1);
+  }
+}
+
+export async function headlessEntity(args) {
+  const entityName = args[0];
+  if (!entityName) {
+    console.error(theme.error('Error: entity name is required'));
+    console.error(`Usage: hexagonizer entity <name> [-y] [--json [path]]`);
+    process.exit(1);
+  }
+
+  const scriptArgs = [entityName];
+  const env = { AUTO_CONFIRM: 'true' };
+
+  for (let i = 1; i < args.length; i++) {
+    switch (args[i]) {
+      case '-y':
+      case '--yes':
+        scriptArgs.push('-y');
+        break;
+      case '--json':
+        scriptArgs.push('--json');
+        if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+          scriptArgs.push(args[++i]);
+        }
+        break;
+    }
+  }
+
+  banner();
+  console.log(theme.info(`Generating entity "${entityName}"...\n`));
+  await safeRun('scripts/entity-generator.sh', scriptArgs, env);
+}
+
 const entry = process.argv[1] || '';
 if (entry.endsWith('index.js')) {
   main();

@@ -3,7 +3,7 @@
 Hexagonizer es un CLI escrito en Bash que orquesta generadores de codigo Node.js. Su arquitectura es un **pipeline secuencial de modulos numerados**.
 
 ```
-bin/hexagon (menu interactivo)
+bin/hexagonizer (menu interactivo)
   |
   +-- scripts/init-project.sh (proyecto nuevo)
   |     |

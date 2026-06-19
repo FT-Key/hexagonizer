@@ -7,7 +7,7 @@ import { theme } from './styles.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 
-export function runScript(scriptRelPath, args = [], env = {}) {
+export function runScript(scriptRelPath, args = [], env = {}, options = {}) {
   return new Promise((resolvePromise, reject) => {
     const scriptPath = resolve(ROOT, scriptRelPath);
 
@@ -17,7 +17,7 @@ export function runScript(scriptRelPath, args = [], env = {}) {
     }
 
     const child = spawn('bash', [scriptPath, ...args], {
-      cwd: process.cwd(),
+      cwd: options.cwd || process.cwd(),
       stdio: ['inherit', 'inherit', 'pipe'],
       env: {
         ...process.env,
@@ -62,10 +62,10 @@ export function runCommand(cmd, args = [], options = {}) {
   });
 }
 
-export async function safeRun(scriptRelPath, args = [], env = {}) {
+export async function safeRun(scriptRelPath, args = [], env = {}, options = {}) {
   console.log(theme.info(`Running ${scriptRelPath}...`));
   try {
-    await runScript(scriptRelPath, args, env);
+    await runScript(scriptRelPath, args, env, options);
     console.log(theme.success('Done\n'));
     return true;
   } catch (err) {

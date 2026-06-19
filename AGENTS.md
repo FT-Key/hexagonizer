@@ -32,6 +32,7 @@ Cuando recibas una solicitud de implementacion, sigue este proceso. Es un LOOP e
    - `design-principles` — siempre (SOLID, KISS, DRY, YAGNI)
    - `design-patterns` — patrones de diseno
    - `error-handling` — manejo de errores
+   - `hexagonizer` — cuando el usuario pida generar proyectos o entidades hexagonales
 3. Para implementacion directa: hazlo tu mismo
 4. Para implementacion compleja: delega a @builder via Task tool
 5. **@reviewer**: Code review de los cambios

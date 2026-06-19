@@ -1,7 +1,7 @@
 {
   "name": "hexagonizer",
-  "version": "1.2.0",
-  "description": "CLI para generar proyectos y entidades hexagonales en Node.js",
+  "version": "1.3.0",
+  "description": "Scaffold Node.js projects with hexagonal architecture — interactive CLI + headless mode for AI agents (opencode, claude code, etc.).",
   "bin": {
     "hexagonizer": "./bin/hexagon.mjs"
   },
@@ -15,9 +15,19 @@
   "keywords": [
     "cli",
     "hexagon",
+    "hexagonal",
     "ddd",
+    "clean-architecture",
+    "scaffold",
+    "generator",
+    "node",
+    "express",
     "bash",
-    "node"
+    "opencode",
+    "claude-code",
+    "claude-code-cli",
+    "ai-agent",
+    "ai"
   ],
   "author": "Franco Nicolás Toledo",
   "license": "MIT",
